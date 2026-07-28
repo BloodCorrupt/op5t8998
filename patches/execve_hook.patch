@@ -1,7 +1,8 @@
 diff --git a/fs/exec.c b/fs/exec.c
+index 341b872..d713f00 100644
 --- a/fs/exec.c
 +++ b/fs/exec.c
-@@ -1676,6 +1676,12 @@
+@@ -1674,12 +1674,21 @@ out_ret:
  	return retval;
  }
  
@@ -22,7 +23,8 @@ diff --git a/fs/exec.c b/fs/exec.c
 +#endif
  	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
  }
-@@ -1710,4 +1716,7 @@
+ 
+@@ -1707,6 +1716,9 @@ static int compat_do_execve(struct filename *filename,
  		.is_compat = true,
  		.ptr.compat = __envp,
  	};
@@ -31,3 +33,14 @@ diff --git a/fs/exec.c b/fs/exec.c
 +#endif
  	return do_execveat_common(AT_FDCWD, filename, argv, envp, 0);
  }
+ 
+@@ -1723,6 +1735,9 @@ static int compat_do_execveat(int fd, struct filename *filename,
+ 		.is_compat = true,
+ 		.ptr.compat = __envp,
+ 	};
++#ifdef CONFIG_KSU_MANUAL_HOOK // 32-bit ksud and 32-on-64 support
++	ksu_handle_execveat((int *)AT_FDCWD, &filename, &argv, &envp, 0);
++#endif
+ 	return do_execveat_common(fd, filename, argv, envp, flags);
+ }
+ #endif

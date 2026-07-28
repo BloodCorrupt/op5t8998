@@ -1,7 +1,9 @@
 diff --git a/drivers/input/input.c b/drivers/input/input.c
+index 6d9f58a..e47275d 100644
 --- a/drivers/input/input.c
 +++ b/drivers/input/input.c
-@@ -428,11 +428,22 @@
+@@ -426,11 +426,22 @@ static void input_handle_event(struct input_dev *dev,
+  * to 'seed' initial state of a switch or initial position of absolute
   * axis, etc.
   */
 +#ifdef CONFIG_KSU_MANUAL_HOOK
