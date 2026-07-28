@@ -116,8 +116,8 @@ if [ "$USE_ANYKERNEL3" = "true" ]; then
             sed -i 's/device.name3=.*/device.name3=OnePlus5/' "${AK3_WORK}/anykernel.sh"
             sed -i 's/device.name4=.*/device.name4=OnePlus5T/' "${AK3_WORK}/anykernel.sh"
             sed -i 's|supported.versions=.*|supported.versions=|' "${AK3_WORK}/anykernel.sh"
-            sed -i 's|block=.*|block=/dev/block/bootdevice/by-name/boot;|' "${AK3_WORK}/anykernel.sh"
-            sed -i 's/is_slot_device=.*/is_slot_device=0/' "${AK3_WORK}/anykernel.sh"
+            sed -i -E 's|^[bB][lL][oO][cC][kK]=.*|BLOCK=/dev/block/bootdevice/by-name/boot;|' "${AK3_WORK}/anykernel.sh"
+            sed -i -E 's|^[iI][sS]_[sS][lL][oO][tT]_[dD][eE][vV][iI][cC][eE]=.*|IS_SLOT_DEVICE=0;|' "${AK3_WORK}/anykernel.sh"
         fi
         
         # Create zip
