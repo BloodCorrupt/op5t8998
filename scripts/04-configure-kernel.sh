@@ -35,11 +35,12 @@ fi
 # Setup output directory
 mkdir -p "$OUTPUT_PATH"
 
-# --- Host toolchain flags (use system GCC/ld for host binaries) ---
+# --- Host toolchain flags (force system GCC/ld for host binaries on Ubuntu 24.04/26.04) ---
 HOST_FLAGS=(
     HOSTCC=gcc
     HOSTCXX=g++
     HOSTLD=/usr/bin/ld
+    HOSTLDFLAGS="-B/usr/bin"
 )
 
 # --- Generate defconfig ---

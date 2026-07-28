@@ -29,9 +29,11 @@ substep "Setting up toolchain environment..."
 case "$TOOLCHAIN_TYPE" in
     proton-clang)
         CLANG_PATH="${TOOLCHAIN_PATH}/proton-clang"
-        export PATH="${CLANG_PATH}/bin:$PATH"
-        CC="clang"
+        # Use full path to clang executable for kernel targets
+        CC="${CLANG_PATH}/bin/clang"
         CLANG_TRIPLE="aarch64-linux-gnu-"
+        # Append to PATH (not prepend) so host tools keep system gcc/ld first
+        export PATH="$PATH:${CLANG_PATH}/bin"
         ;;
     system-clang)
         CC="clang"
@@ -41,7 +43,7 @@ esac
 
 GCC_AARCH64_PATH="${TOOLCHAIN_PATH}/gcc-aarch64"
 GCC_ARM32_PATH="${TOOLCHAIN_PATH}/gcc-arm32"
-export PATH="${GCC_AARCH64_PATH}/bin:${GCC_ARM32_PATH}/bin:$PATH"
+export PATH="$PATH:${GCC_AARCH64_PATH}/bin:${GCC_ARM32_PATH}/bin"
 
 CROSS_COMPILE="aarch64-linux-android-"
 CROSS_COMPILE_ARM32="arm-linux-androideabi-"
@@ -74,6 +76,7 @@ make_args=(
     HOSTCC=gcc
     HOSTCXX=g++
     HOSTLD=/usr/bin/ld
+    HOSTLDFLAGS="-B/usr/bin"
     CROSS_COMPILE="$CROSS_COMPILE"
     CROSS_COMPILE_ARM32="$CROSS_COMPILE_ARM32"
     CLANG_TRIPLE="$CLANG_TRIPLE"
