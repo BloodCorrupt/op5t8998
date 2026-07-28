@@ -35,9 +35,16 @@ fi
 # Setup output directory
 mkdir -p "$OUTPUT_PATH"
 
+# --- Host toolchain flags (use system GCC/ld for host binaries) ---
+HOST_FLAGS=(
+    HOSTCC=gcc
+    HOSTCXX=g++
+    HOSTLD=/usr/bin/ld
+)
+
 # --- Generate defconfig ---
 substep "Generating defconfig: ${DEFCONFIG}"
-make O="$OUTPUT_PATH" ARCH="$ARCH" "$DEFCONFIG"
+make O="$OUTPUT_PATH" ARCH="$ARCH" "${HOST_FLAGS[@]}" "$DEFCONFIG"
 success "Defconfig generated."
 
 # --- Verify KSU config flags ---
@@ -85,7 +92,7 @@ check_config "CONFIG_KALLSYMS_ALL" "y" || true
 # If we modified .config, re-run olddefconfig to normalize
 if [ "$CONFIG_OK" = false ]; then
     substep "Re-running olddefconfig to normalize configuration..."
-    make O="$OUTPUT_PATH" ARCH="$ARCH" olddefconfig
+    make O="$OUTPUT_PATH" ARCH="$ARCH" "${HOST_FLAGS[@]}" olddefconfig
 fi
 
 # Final verification
@@ -111,7 +118,7 @@ fi
 # --- Optional: menuconfig ---
 if [ "${1:-}" = "--menuconfig" ]; then
     substep "Opening menuconfig for manual tweaks..."
-    make O="$OUTPUT_PATH" ARCH="$ARCH" menuconfig
+    make O="$OUTPUT_PATH" ARCH="$ARCH" "${HOST_FLAGS[@]}" menuconfig
 fi
 
 success "Kernel configured successfully with ReSukiSU support!"
