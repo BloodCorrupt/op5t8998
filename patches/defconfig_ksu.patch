@@ -1,16 +1,12 @@
 diff --git a/arch/arm64/configs/lineage_oneplus5_defconfig b/arch/arm64/configs/lineage_oneplus5_defconfig
-index 0137b2a..0bdf2ea 100644
 --- a/arch/arm64/configs/lineage_oneplus5_defconfig
 +++ b/arch/arm64/configs/lineage_oneplus5_defconfig
-@@ -1,4 +1,10 @@
--CONFIG_LOCALVERSION="-perf"
-+CONFIG_LOCALVERSION="-perf-ksu"
-+# CONFIG_LOCALVERSION_AUTO is not set
-+
+@@ -1,4 +1,8 @@
+ CONFIG_LOCALVERSION="-perf"
+ # CONFIG_LOCALVERSION_AUTO is not set
 +# ReSukiSU (KernelSU)
 +CONFIG_KSU=y
++# CONFIG_KSU_TRACEPOINT_HOOK is not set
 +CONFIG_KSU_MANUAL_HOOK=y
-+
- # CONFIG_LOCALVERSION_AUTO is not set
  # CONFIG_USELIB is not set
  CONFIG_AUDIT=y

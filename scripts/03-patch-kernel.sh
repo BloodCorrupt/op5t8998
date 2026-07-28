@@ -21,9 +21,9 @@ fi
 
 cd "$KERNEL_PATH"
 
-# Reset any previously modified tracked files to ensure clean patch application
-substep "Ensuring clean kernel working tree..."
-git checkout -- . 2>/dev/null || true
+# Reset only target patch files to ensure clean application without undoing Kconfig integration
+substep "Ensuring clean kernel working tree for target patches..."
+git checkout -- fs/stat.c fs/exec.c fs/open.c kernel/reboot.c drivers/input/input.c fs/read_write.c kernel/sys.c arch/arm64/configs/lineage_oneplus5_defconfig 2>/dev/null || true
 
 # Track results
 APPLIED=0

@@ -17,6 +17,21 @@ fi
 
 cd "$KERNEL_PATH"
 
+# Ensure drivers/Kconfig and drivers/Makefile have ReSukiSU integration active
+DRIVER_MAKEFILE="drivers/Makefile"
+DRIVER_KCONFIG="drivers/Kconfig"
+
+if ! grep -q "kernelsu" "$DRIVER_MAKEFILE" 2>/dev/null; then
+    substep "Re-enabling ReSukiSU in drivers/Makefile..."
+    echo "" >> "$DRIVER_MAKEFILE"
+    echo 'obj-$(CONFIG_KSU) += kernelsu/' >> "$DRIVER_MAKEFILE"
+fi
+
+if ! grep -q "kernelsu" "$DRIVER_KCONFIG" 2>/dev/null; then
+    substep "Re-enabling ReSukiSU in drivers/Kconfig..."
+    sed -i '/^endmenu/i source "drivers/kernelsu/Kconfig"' "$DRIVER_KCONFIG" 2>/dev/null || echo 'source "drivers/kernelsu/Kconfig"' >> "$DRIVER_KCONFIG"
+fi
+
 # Setup output directory
 mkdir -p "$OUTPUT_PATH"
 
@@ -59,6 +74,7 @@ fi
 
 if ! check_config "CONFIG_KSU_MANUAL_HOOK" "y"; then
     warn "Adding CONFIG_KSU_MANUAL_HOOK=y to .config"
+    echo "# CONFIG_KSU_TRACEPOINT_HOOK is not set" >> "$CONFIG_FILE"
     echo "CONFIG_KSU_MANUAL_HOOK=y" >> "$CONFIG_FILE"
     CONFIG_OK=false
 fi
@@ -88,7 +104,7 @@ done
 
 if [ "$FINAL_OK" = false ]; then
     error "Configuration verification failed."
-    error "You may need to check your ReSukiSU Kconfig integration."
+    error "Check that drivers/kernelsu symlink exists in kernel_source/drivers/."
     exit 1
 fi
 
