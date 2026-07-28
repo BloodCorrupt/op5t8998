@@ -1,7 +1,7 @@
 diff --git a/kernel/reboot.c b/kernel/reboot.c
 --- a/kernel/reboot.c
 +++ b/kernel/reboot.c
-@@ -277,6 +277,11 @@
+@@ -275,6 +275,11 @@
   *
   * reboot doesn't sync: do that yourself before calling this.
   */
@@ -13,7 +13,7 @@ diff --git a/kernel/reboot.c b/kernel/reboot.c
  SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,
  		void __user *, arg)
  {
-@@ -284,6 +289,9 @@
+@@ -285,6 +290,9 @@
  	char buffer[256];
  	int ret = 0;
  

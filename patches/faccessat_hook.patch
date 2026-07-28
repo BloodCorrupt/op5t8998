@@ -1,7 +1,7 @@
 diff --git a/fs/open.c b/fs/open.c
 --- a/fs/open.c
 +++ b/fs/open.c
-@@ -354,6 +354,11 @@
+@@ -341,6 +341,12 @@
  	return error;
  }
  
@@ -14,7 +14,7 @@ diff --git a/fs/open.c b/fs/open.c
  /*
   * access() needs to use the real uid/gid, not the effective uid/gid.
   * We do this by temporarily clearing all FS-related capabilities and
-@@ -369,6 +374,10 @@
+@@ -355,6 +361,10 @@
  	int res;
  	unsigned int lookup_flags = LOOKUP_FOLLOW;
  

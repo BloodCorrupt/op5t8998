@@ -1,7 +1,10 @@
 diff --git a/fs/read_write.c b/fs/read_write.c
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -568,11 +568,21 @@
+@@ -557,11 +557,21 @@
+ static inline void file_pos_write(struct file *file, loff_t pos)
+ {
+ 	if ((file->f_mode & FMODE_STREAM) == 0)
  		file->f_pos = pos;
  }
  
@@ -21,5 +24,3 @@ diff --git a/fs/read_write.c b/fs/read_write.c
 +		ksu_handle_sys_read(fd, &buf, &count);
 +#endif
  	if (f.file) {
- 		loff_t pos = file_pos_read(f.file);
- 		ret = vfs_read(f.file, buf, count, &pos);

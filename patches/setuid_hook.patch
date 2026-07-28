@@ -1,8 +1,8 @@
 diff --git a/kernel/sys.c b/kernel/sys.c
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
-@@ -835,6 +835,9 @@
-         return retval;
+@@ -578,6 +578,9 @@
+ 	return retval;
  }
  
 +#ifdef CONFIG_KSU_MANUAL_HOOK
@@ -11,14 +11,18 @@ diff --git a/kernel/sys.c b/kernel/sys.c
  
  /*
   * This function implements a generic ability to update ruid, euid,
-@@ -848,6 +851,10 @@
-         int retval;
-         kuid_t kruid, keuid, ksuid;
+  * and suid.  This allows you to implement the 4.4 compatible seteuid().
+@@ -585,6 +588,10 @@
+ SYSCALL_DEFINE3(setresuid, uid_t, ruid, uid_t, euid, uid_t, suid)
+ {
+ 	struct user_namespace *ns = current_user_ns();
+ 	const struct cred *old;
+ 	struct cred *new;
+ 	int retval;
+ 	kuid_t kruid, keuid, ksuid;
  
 +#ifdef CONFIG_KSU_MANUAL_HOOK
-+       (void)ksu_handle_setresuid(ruid, euid, suid);
++	(void)ksu_handle_setresuid(ruid, euid, suid);
 +#endif
 +
-         kruid = make_kuid(ns, ruid);
-         keuid = make_kuid(ns, euid);
-         ksuid = make_kuid(ns, suid);
+ 	kruid = make_kuid(ns, ruid);

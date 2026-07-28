@@ -38,40 +38,58 @@ apply_patch() {
         FAILED=$((FAILED + 1))
         return 1
     fi
-    
-    # Check if patch can be applied
-    if git apply --check "$patch_file" 2>/dev/null; then
-        git apply "$patch_file"
-        success "  Applied: ${patch_name}"
-        APPLIED=$((APPLIED + 1))
-        return 0
-    fi
+
+    # Create temporary LF-only patch file to avoid Windows CRLF issues
+    local clean_patch
+    clean_patch=$(mktemp)
+    tr -d '\r' < "$patch_file" > "$clean_patch"
     
     # Check if already applied (reverse check)
-    if git apply --check --reverse "$patch_file" 2>/dev/null; then
+    if git apply --check --reverse --ignore-whitespace "$clean_patch" 2>/dev/null; then
         warn "  Already applied: ${patch_name} (skipping)"
         SKIPPED=$((SKIPPED + 1))
+        rm -f "$clean_patch"
         return 0
     fi
     
-    # Try with more fuzz
-    if git apply --check --3way "$patch_file" 2>/dev/null; then
-        git apply --3way "$patch_file"
+    # 1. Try standard git apply
+    if git apply --check "$clean_patch" 2>/dev/null; then
+        git apply "$clean_patch"
+        success "  Applied: ${patch_name}"
+        APPLIED=$((APPLIED + 1))
+        rm -f "$clean_patch"
+        return 0
+    fi
+
+    # 2. Try git apply with whitespace tolerance
+    if git apply --check --ignore-whitespace "$clean_patch" 2>/dev/null; then
+        git apply --ignore-whitespace "$clean_patch"
+        success "  Applied (whitespace ignored): ${patch_name}"
+        APPLIED=$((APPLIED + 1))
+        rm -f "$clean_patch"
+        return 0
+    fi
+    
+    # 3. Try 3-way merge
+    if git apply --check --3way "$clean_patch" 2>/dev/null; then
+        git apply --3way "$clean_patch"
         success "  Applied with 3-way merge: ${patch_name}"
         APPLIED=$((APPLIED + 1))
+        rm -f "$clean_patch"
         return 0
     fi
     
-    # Fallback: try patch command with fuzz
-    if patch -p1 --dry-run < "$patch_file" &>/dev/null; then
-        patch -p1 < "$patch_file"
+    # 4. Fallback: try patch command with fuzz
+    if patch -p1 --dry-run < "$clean_patch" &>/dev/null; then
+        patch -p1 < "$clean_patch"
         success "  Applied with patch(1): ${patch_name}"
         APPLIED=$((APPLIED + 1))
+        rm -f "$clean_patch"
         return 0
     fi
     
+    rm -f "$clean_patch"
     error "  FAILED to apply: ${patch_name}"
-    error "  You may need to apply this patch manually."
     error "  Patch file: ${patch_file}"
     FAILED=$((FAILED + 1))
     return 1
