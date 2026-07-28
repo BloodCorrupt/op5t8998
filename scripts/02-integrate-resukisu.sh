@@ -1,0 +1,118 @@
+#!/bin/bash
+# ============================================================
+# Step 2: Integrate ReSukiSU into Kernel Source Tree
+# ============================================================
+set -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+source "${SCRIPT_DIR}/utils.sh"
+load_config
+
+step "Integrating ReSukiSU into Kernel Tree"
+
+RESUKISU_PATH="${BUILDER_ROOT}/ReSukiSU"
+DRIVER_DIR="${KERNEL_PATH}/drivers"
+KSU_DRIVER_DIR="${DRIVER_DIR}/kernelsu"
+DRIVER_MAKEFILE="${DRIVER_DIR}/Makefile"
+DRIVER_KCONFIG="${DRIVER_DIR}/Kconfig"
+
+# Verify sources exist
+if [ ! -d "$KERNEL_PATH" ] || [ ! -f "$KERNEL_PATH/Makefile" ]; then
+    error "Kernel source not found at ${KERNEL_PATH}"
+    error "Run step 01 (Clone Sources) first."
+    exit 1
+fi
+
+if [ ! -d "$RESUKISU_PATH" ] || [ ! -d "$RESUKISU_PATH/kernel" ]; then
+    error "ReSukiSU source not found at ${RESUKISU_PATH}"
+    error "Run step 01 (Clone Sources) first."
+    exit 1
+fi
+
+# Check if already integrated
+if [ -d "$KSU_DRIVER_DIR" ] && [ -f "$KSU_DRIVER_DIR/Kconfig" ]; then
+    warn "ReSukiSU already integrated in kernel tree."
+    if ! confirm "Re-integrate? This will replace the existing integration."; then
+        info "Skipping integration."
+        exit 0
+    fi
+    rm -rf "$KSU_DRIVER_DIR"
+fi
+
+# --- Create symlink to ReSukiSU kernel module ---
+substep "Creating symlink: drivers/kernelsu -> ReSukiSU/kernel"
+ln -sf "${RESUKISU_PATH}/kernel" "$KSU_DRIVER_DIR"
+
+if [ -L "$KSU_DRIVER_DIR" ] && [ -f "$KSU_DRIVER_DIR/Kconfig" ]; then
+    success "Symlink created successfully."
+else
+    error "Failed to create symlink. Trying copy instead..."
+    rm -f "$KSU_DRIVER_DIR"
+    cp -r "${RESUKISU_PATH}/kernel" "$KSU_DRIVER_DIR"
+    if [ -f "$KSU_DRIVER_DIR/Kconfig" ]; then
+        success "Copied ReSukiSU kernel module."
+    else
+        error "Integration failed. Check paths."
+        exit 1
+    fi
+fi
+
+# --- Update drivers/Makefile ---
+substep "Updating drivers/Makefile..."
+if grep -q "kernelsu" "$DRIVER_MAKEFILE"; then
+    warn "drivers/Makefile already contains kernelsu entry. Skipping."
+else
+    echo "" >> "$DRIVER_MAKEFILE"
+    echo "# ReSukiSU" >> "$DRIVER_MAKEFILE"
+    echo 'obj-$(CONFIG_KSU) += kernelsu/' >> "$DRIVER_MAKEFILE"
+    success "Added kernelsu to drivers/Makefile"
+fi
+
+# --- Update drivers/Kconfig ---
+substep "Updating drivers/Kconfig..."
+if grep -q "kernelsu" "$DRIVER_KCONFIG"; then
+    warn "drivers/Kconfig already contains kernelsu entry. Skipping."
+else
+    # Insert before the last 'endmenu' line
+    sed -i '/^endmenu/i source "drivers/kernelsu/Kconfig"' "$DRIVER_KCONFIG"
+    if grep -q 'source "drivers/kernelsu/Kconfig"' "$DRIVER_KCONFIG"; then
+        success "Added kernelsu Kconfig to drivers/Kconfig"
+    else
+        # Fallback: just append before endmenu
+        echo 'source "drivers/kernelsu/Kconfig"' >> "$DRIVER_KCONFIG"
+        success "Added kernelsu Kconfig to drivers/Kconfig (appended)"
+    fi
+fi
+
+# --- Verify integration ---
+substep "Verifying integration..."
+VERIFY_OK=true
+
+if [ ! -f "$KSU_DRIVER_DIR/Kconfig" ]; then
+    error "Kconfig not found in drivers/kernelsu/"
+    VERIFY_OK=false
+fi
+
+if [ ! -f "$KSU_DRIVER_DIR/Makefile" ]; then
+    error "Makefile not found in drivers/kernelsu/"
+    VERIFY_OK=false
+fi
+
+if ! grep -q "kernelsu" "$DRIVER_MAKEFILE"; then
+    error "kernelsu not found in drivers/Makefile"
+    VERIFY_OK=false
+fi
+
+if ! grep -q "kernelsu" "$DRIVER_KCONFIG"; then
+    error "kernelsu not found in drivers/Kconfig"
+    VERIFY_OK=false
+fi
+
+if [ "$VERIFY_OK" = true ]; then
+    success "ReSukiSU integration verified successfully!"
+else
+    error "Integration verification failed. Check errors above."
+    exit 1
+fi
+
+mark_step_done "02-integrate-resukisu"

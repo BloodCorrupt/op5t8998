@@ -1,0 +1,38 @@
+# ============================================================
+# ReSukiSU Kernel Builder - .gitignore
+# ============================================================
+
+# --- Build artifacts ---
+out/
+output/
+build.log
+
+# --- Cloned sources (downloaded at build time) ---
+kernel_source/
+ReSukiSU/
+AnyKernel3/
+toolchains/
+tools/
+
+# --- Build state ---
+.state/
+
+# --- Temporary directories ---
+.repack_tmp/
+.ak3_tmp/
+
+# --- Boot images (user-specific, large binary) ---
+boot.img
+*.img
+
+# --- OS junk ---
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# --- Editor files ---
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
