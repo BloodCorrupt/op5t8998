@@ -107,18 +107,70 @@ if [ "$USE_ANYKERNEL3" = "true" ]; then
         # Copy kernel image
         cp "$KERNEL_IMG" "${AK3_WORK}/${KERNEL_IMAGE}"
         
-        # Update anykernel.sh for OnePlus 5/5T
-        if [ -f "${AK3_WORK}/anykernel.sh" ]; then
-            sed -i 's/kernel.string=.*/kernel.string=ReSukiSU Kernel by Builder/' "${AK3_WORK}/anykernel.sh"
-            sed -i 's/do.devicecheck=.*/do.devicecheck=1/' "${AK3_WORK}/anykernel.sh"
-            sed -i 's/device.name1=.*/device.name1=cheeseburger/' "${AK3_WORK}/anykernel.sh"
-            sed -i 's/device.name2=.*/device.name2=dumpling/' "${AK3_WORK}/anykernel.sh"
-            sed -i 's/device.name3=.*/device.name3=OnePlus5/' "${AK3_WORK}/anykernel.sh"
-            sed -i 's/device.name4=.*/device.name4=OnePlus5T/' "${AK3_WORK}/anykernel.sh"
-            sed -i 's|supported.versions=.*|supported.versions=|' "${AK3_WORK}/anykernel.sh"
-            sed -i -E 's|^[bB][lL][oO][cC][kK]=.*|BLOCK=/dev/block/bootdevice/by-name/boot;|' "${AK3_WORK}/anykernel.sh"
-            sed -i -E 's|^[iI][sS]_[sS][lL][oO][tT]_[dD][eE][vV][iI][cC][eE]=.*|IS_SLOT_DEVICE=0;|' "${AK3_WORK}/anykernel.sh"
-        fi
+        # Write exact verified anykernel.sh for OnePlus 5/5T
+        substep "Writing verified anykernel.sh for OnePlus 5/5T..."
+        cat << 'EOF' > "${AK3_WORK}/anykernel.sh"
+### AnyKernel3 Ramdisk Mod Script
+## osm0sis @ xda-developers
+
+### AnyKernel setup
+# global properties
+properties() { '
+kernel.string=ReSukiSU Kernel
+do.devicecheck=1
+do.modules=0
+do.systemless=1
+do.cleanup=1
+do.cleanuponabort=1
+device.name1=dumpling
+device.name2=OnePlus5T
+device.name3=cheeseburger
+device.name4=OnePlus5
+device.name5=
+supported.versions=9 - 15
+supported.patchlevels=
+supported.vendorpatchlevels=
+'; } # end properties
+
+
+### AnyKernel install
+## boot files attributes
+boot_attributes() {
+set_perm_recursive 0 0 755 644 $RAMDISK/*;
+set_perm_recursive 0 0 750 750 $RAMDISK/init* $RAMDISK/sbin;
+} # end attributes
+
+# boot shell variables
+BLOCK=/dev/block/bootdevice/by-name/boot;
+IS_SLOT_DEVICE=0;
+RAMDISK_COMPRESSION=auto;
+PATCH_VBMETA_FLAG=auto;
+
+# import functions/variables and setup patching - see for reference (DO NOT REMOVE)
+. tools/ak3-core.sh;
+
+# boot install
+dump_boot; # use split_boot to skip ramdisk unpack, e.g. for devices with init_boot ramdisk
+
+# init.rc
+backup_file init.rc;
+replace_string init.rc "cpuctl cpu,timer_slack" "mount cgroup none /dev/cpuctl cpu" "mount cgroup none /dev/cpuctl cpu,timer_slack";
+
+# init.tuna.rc
+backup_file init.tuna.rc;
+insert_line init.tuna.rc "nodiratime barrier=0" after "mount_all /fstab.tuna" "\tmount ext4 /dev/block/platform/omap/omap_hsmmc.0/by-name/userdata /data remount nosuid nodev noatime nodiratime barrier=0";
+append_file init.tuna.rc "bootscript" init.tuna;
+
+# fstab.tuna
+backup_file fstab.tuna;
+patch_fstab fstab.tuna /system ext4 options "noatime,barrier=1" "noatime,nodiratime,barrier=0";
+patch_fstab fstab.tuna /cache ext4 options "barrier=1" "barrier=0,nomblk_io_submit";
+patch_fstab fstab.tuna /data ext4 options "data=ordered" "nomblk_io_submit,data=writeback";
+append_file fstab.tuna "usbdisk" fstab;
+
+write_boot; # use flash_boot to skip ramdisk repack, e.g. for devices with init_boot ramdisk
+## end boot install
+EOF
         
         # Create zip
         TIMESTAMP=$(date +%Y%m%d_%H%M)
