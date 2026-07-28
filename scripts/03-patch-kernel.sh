@@ -21,6 +21,10 @@ fi
 
 cd "$KERNEL_PATH"
 
+# Reset any previously modified tracked files to ensure clean patch application
+substep "Ensuring clean kernel working tree..."
+git checkout -- . 2>/dev/null || true
+
 # Track results
 APPLIED=0
 SKIPPED=0
