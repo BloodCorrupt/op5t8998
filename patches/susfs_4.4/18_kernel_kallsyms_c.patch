@@ -1,12 +1,11 @@
 diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
-index 5c5987f..ea1ac89 100644
 --- a/kernel/kallsyms.c
 +++ b/kernel/kallsyms.c
-@@ -548,6 +548,16 @@ static int s_show(struct seq_file *m, void *p)
+@@ -547,4 +547,14 @@
+ 	} else
++#ifndef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
  		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
  			   iter->type, iter->name);
- 	return 0;
-+#ifndef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
 +#else
 +	{
 +		if (strstr(iter->name, "ksu_") || !strncmp(iter->name, "susfs_", 6) || !strncmp(iter->name, "ksud", 4)) {
@@ -16,7 +15,4 @@ index 5c5987f..ea1ac89 100644
 +			   iter->type, iter->name);
 +	}
 +#endif
- }
- 
- static const struct seq_operations kallsyms_op = {
-
+ 	return 0;

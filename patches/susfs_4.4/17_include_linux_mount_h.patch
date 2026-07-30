@@ -1,15 +1,11 @@
 diff --git a/include/linux/mount.h b/include/linux/mount.h
-index bbe4861..2bafb09 100644
 --- a/include/linux/mount.h
 +++ b/include/linux/mount.h
-@@ -68,6 +68,9 @@ struct vfsmount {
+@@ -67,4 +67,7 @@
+ 	struct dentry *mnt_root;	/* root of the mounted tree */
  	struct super_block *mnt_sb;	/* pointer to superblock */
- 	int mnt_flags;
- 	void *data;
 +#ifdef CONFIG_KSU_SUSFS
 +	u64 susfs_mnt_id_backup;
 +#endif
- };
- 
- struct file; /* forward dec */
-
+ 	int mnt_flags;
+ 	void *data;

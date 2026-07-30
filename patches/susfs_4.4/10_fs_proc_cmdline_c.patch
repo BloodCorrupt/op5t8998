@@ -1,11 +1,9 @@
 diff --git a/fs/proc/cmdline.c b/fs/proc/cmdline.c
-index 57d2d15..660028b 100644
 --- a/fs/proc/cmdline.c
 +++ b/fs/proc/cmdline.c
-@@ -28,6 +28,16 @@ static void proc_command_line_init(void) {
+@@ -27,4 +27,14 @@
+ #endif
  
- static int cmdline_proc_show(struct seq_file *m, void *v)
- {
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
 +extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
 +#endif
@@ -16,7 +14,5 @@ index 57d2d15..660028b 100644
 +		return 0;
 +	}
 +#endif
- #ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
- 	seq_printf(m, "%s\n", proc_command_line);
- #else
-
+ static int cmdline_proc_show(struct seq_file *m, void *v)
+ {

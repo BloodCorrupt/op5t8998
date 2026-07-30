@@ -1,12 +1,7 @@
 diff --git a/fs/Makefile b/fs/Makefile
-index 969caba..67903d4 100644
 --- a/fs/Makefile
 +++ b/fs/Makefile
-@@ -128,4 +128,6 @@ obj-$(CONFIG_F2FS_FS)		+= f2fs/
- obj-y				+= exofs/ # Multiple modules
- obj-$(CONFIG_CEPH_FS)		+= ceph/
- obj-$(CONFIG_PSTORE)		+= pstore/
+@@ -130,1 +130,3 @@
+ obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
 +
 +obj-$(CONFIG_KSU_SUSFS) += susfs.o
- obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
-

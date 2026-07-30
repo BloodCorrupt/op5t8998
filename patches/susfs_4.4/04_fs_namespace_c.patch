@@ -1,11 +1,9 @@
 diff --git a/fs/namespace.c b/fs/namespace.c
-index 24f4b2c..05ceb29 100644
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -56,6 +56,55 @@ bool susfs_is_auto_add_try_umount_for_bind_mount_enabled = true;
- #include "pnode.h"
- #include "internal.h"
- 
+@@ -23,4 +23,33 @@
+ #include <linux/proc_ns.h>
+ #include <linux/magic.h>
 +#if defined(CONFIG_KSU_SUSFS_SUS_MOUNT) || defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
 +#include <linux/susfs_def.h>
 +#endif
@@ -28,6 +26,18 @@ index 24f4b2c..05ceb29 100644
 +#endif
 +#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT
 +extern int susfs_auto_add_sus_bind_mount(const char *pathname, struct path *path_target);
++bool susfs_is_auto_add_sus_bind_mount_enabled = true;
++#endif
++#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
++extern void susfs_auto_add_try_umount_for_bind_mount(struct path *path);
++bool susfs_is_auto_add_try_umount_for_bind_mount_enabled = true;
++#endif
++
+ #include <linux/bootmem.h>
+ #include <linux/task_work.h>
+@@ -45,4 +74,24 @@
+ }
+ __setup("mhash_entries=", set_mhash_entries);
 +
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +// Our own mnt_alloc_id() that assigns mnt_id starting from DEFAULT_SUS_MNT_ID
@@ -48,20 +58,11 @@ index 24f4b2c..05ceb29 100644
 +	return res;
 +}
 +#endif
-+bool susfs_is_auto_add_sus_bind_mount_enabled = true;
-+#endif
-+#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT
-+extern void susfs_auto_add_try_umount_for_bind_mount(struct path *path);
-+bool susfs_is_auto_add_try_umount_for_bind_mount_enabled = true;
-+#endif
-+
- /* Maximum number of mounts in a mount namespace */
- unsigned int sysctl_mount_max __read_mostly = 100000;
  
-@@ -107,6 +156,18 @@ __setup("mphash_entries=", set_mphash_entries);
- static u64 event;
- static DEFINE_IDA(mnt_id_ida);
- static DEFINE_IDA(mnt_group_ida);
+ static __initdata unsigned long mphash_entries;
+@@ -103,4 +152,16 @@
+ static int mnt_alloc_id(struct mount *mnt)
+ {
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (mnt->mnt_id >= DEFAULT_SUS_MNT_ID) {
 +		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
@@ -74,13 +75,11 @@ index 24f4b2c..05ceb29 100644
 +		return res;
 +	}
 +#endif
- static DEFINE_SPINLOCK(mnt_id_lock);
- static int mnt_id_start = 0;
- static int mnt_group_start = 1;
-@@ -124,6 +185,29 @@ EXPORT_SYMBOL_GPL(fs_kobj);
-  * vfsmount lock may be taken for read to prevent changes to the
-  * vfsmount hash, ie. during mountpoint lookups or walking back
-  * up the tree.
+ 	int res;
+ 
+@@ -120,4 +181,27 @@
+ static void mnt_free_id(struct mount *mnt)
+ {
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	int mnt_id_backup = mnt->mnt.susfs_mnt_id_backup;
 +	if (unlikely(mnt_id_backup == DEFAULT_SUS_MNT_ID_FOR_KSU_PROC_UNSHARE)) {
@@ -104,13 +103,11 @@ index 24f4b2c..05ceb29 100644
 +		return;
 +	}
 +#endif
-  *
-  * It should be taken for write in all cases where the vfsmount
-  * tree or hash is modified or when a vfsmount structure is modified.
-@@ -158,6 +242,16 @@ static int mnt_alloc_id(struct mount *mnt)
- 		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
- 			return -ENOMEM;
- 		int res = ida_get_new_above(&susfs_mnt_group_ida,
+ 	int id = mnt->mnt_id;
+ 	spin_lock(&mnt_id_lock);
+@@ -154,4 +238,14 @@
+ void mnt_release_group_id(struct mount *mnt)
+ {
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	int id = mnt->mnt_group_id;
 +	if (id >= DEFAULT_SUS_MNT_GROUP_ID) {
@@ -121,13 +118,11 @@ index 24f4b2c..05ceb29 100644
 +		return;
 +	}
 +#endif
- 				susfs_mnt_group_start,
- 				&mnt->mnt_group_id);
- 		if (!res)
-@@ -546,6 +640,25 @@ int mnt_want_write_file(struct file *file)
- 		sb_end_write(file->f_path.mnt->mnt_sb);
- 	return ret;
- }
+ 	int id = mnt->mnt_group_id;
+ 	ida_remove(&mnt_group_ida, id);
+@@ -542,4 +636,23 @@
+ 	lock_mount_hash();
+ 	mnt->mnt.mnt_flags &= ~MNT_READONLY;
 +#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT) || defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
 +	// Check if bind mounted path should be hidden and umounted automatically.
 +	if (susfs_is_current_ksu_domain()) {
@@ -147,13 +142,11 @@ index 24f4b2c..05ceb29 100644
 +orig_flow:
 +#endif
 +#endif
- EXPORT_SYMBOL_GPL(mnt_want_write_file);
- 
- /**
-@@ -986,6 +1099,13 @@ void mnt_set_mountpoint(struct mount *mnt,
+ 	unlock_mount_hash();
  }
- 
- static void __attach_mnt(struct mount *mnt, struct mount *parent)
+@@ -982,4 +1095,11 @@
+ 	if (!type)
+ 		return ERR_PTR(-ENODEV);
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (unlikely(susfs_is_current_ksu_domain())) {
 +		// For KSU domain, use sus mnt_id
@@ -161,13 +154,12 @@ index 24f4b2c..05ceb29 100644
 +#endif
 +
 +
- {
- 	hlist_add_head_rcu(&mnt->mnt_hash,
- 			   m_hash(&parent->mnt, mnt->mnt_mountpoint));
-@@ -1012,6 +1132,14 @@ void mnt_change_mountpoint(struct mount *parent, struct mountpoint *mp, struct m
- 	list_del_init(&mnt->mnt_child);
- 	hlist_del_init(&mnt->mnt_mp_list);
- 	hlist_del_init_rcu(&mnt->mnt_hash);
+ 
+ 	mnt = alloc_vfsmnt(name);
+@@ -1007,4 +1127,12 @@
+ 	mnt->mnt.mnt_root = root;
+ 	mnt->mnt.mnt_sb = root->d_sb;
++
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (susfs_is_current_zygote_domain()) {
 +		mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
@@ -175,18 +167,16 @@ index 24f4b2c..05ceb29 100644
 +	}
 +#endif
 +
-+
- 
- 	attach_mnt(mnt, parent, mp);
- 
-@@ -1044,6 +1172,41 @@ static void commit_tree(struct mount *mnt)
- 	struct mount *m;
- 	LIST_HEAD(head);
- 	struct mnt_namespace *n = parent->mnt_ns;
+ 	mnt->mnt_mountpoint = mnt->mnt.mnt_root;
+ 	mnt->mnt_parent = mnt;
+@@ -1036,5 +1164,37 @@
+ 	struct super_block *sb = old->mnt.mnt_sb;
+ 	struct mount *mnt;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	bool is_current_ksu_domain = susfs_is_current_ksu_domain();
 +	bool is_current_zygote_domain = susfs_is_current_zygote_domain();
 +#endif
+ 	int err;
 +
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (unlikely(is_current_ksu_domain)) {
@@ -215,16 +205,20 @@ index 24f4b2c..05ceb29 100644
 +		goto bypass_orig_flow;
 +	}
 +#endif
+ 
+ 	mnt = alloc_vfsmnt(old->mnt_devname);
+@@ -1040,4 +1200,7 @@
+ 	mnt = alloc_vfsmnt(old->mnt_devname);
+ 	if (!mnt)
+ 		return ERR_PTR(-ENOMEM);
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +bypass_orig_flow:
 +#endif
  
- 	BUG_ON(parent == mnt);
- 
-@@ -2897,6 +3060,14 @@ static void shrink_submounts(struct mount *mnt)
- 	/* extract submounts of 'mountpoint' from the expiration list */
- 	while (select_submounts(mnt, &graveyard)) {
- 		while (!list_empty(&graveyard)) {
+@@ -2893,4 +3056,12 @@
+ 	else
+ 		retval = do_new_mount(&path, type_page, flags, mnt_flags,
+ 				      dev_name, data_page);
 +#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
 +	if (!retval && susfs_is_auto_add_sus_ksu_default_mount_enabled &&
 +			(!(flags & (MS_REMOUNT | MS_BIND | MS_SHARED | MS_PRIVATE | MS_SLAVE | MS_UNBINDABLE)))) {
@@ -233,37 +227,30 @@ index 24f4b2c..05ceb29 100644
 +		}
 +	}
 +#endif
- 			m = list_first_entry(&graveyard, struct mount,
- 						mnt_expire);
- 			touch_mnt_namespace(m->mnt_ns);
-@@ -2952,6 +3123,10 @@ int copy_mount_options(const void __user * data, unsigned long *where)
- 	 */
- 	/* copy_from_user cannot cross TASK_SIZE ! */
- 	size = TASK_SIZE - (unsigned long)data;
+ dput_out:
+@@ -2948,4 +3119,8 @@
+ 	struct mount *p, *q;
+ 	struct mount *old;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	bool is_zygote_pid = susfs_is_current_zygote_domain();
 +	int last_entry_mnt_id = 0;
 +#endif
- 	if (size > PAGE_SIZE)
- 		size = PAGE_SIZE;
- 
-@@ -2971,6 +3146,12 @@ char *copy_mount_string(const void __user *data)
- 	return data ? strndup_user(data, PAGE_SIZE) : NULL;
- }
- 
+ 	struct mount *new;
+ 	int copy_flags;
+@@ -2968,3 +3143,9 @@
+ 	copy_flags = CL_COPY_UNBINDABLE | CL_EXPIRE;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	copy_flags |= CL_COPY_MNT_NS;
 +	if (is_zygote_pid) {
 +		copy_flags |= CL_ZYGOTE_COPY_MNT_NS;
 +	}
 +#endif
- /*
-  * Flags is a 32-bit value that allows up to 31 non-fs dependent flags to
-  * be given to the mount() call (ie: read-only, no-dev, no-suid etc).
-@@ -3008,6 +3189,20 @@ long do_mount(const char *dev_name, const char __user *dir_name,
- 	retval = security_sb_mount(dev_name, &path,
- 				   type_page, flags, data_page);
- 	if (!retval && !may_mount())
+ 	if (user_ns != ns->user_ns)
+ 		copy_flags |= CL_SHARED_TO_SLAVE | CL_UNPRIVILEGED;
+@@ -3004,4 +3185,18 @@
+ 		while (p->mnt.mnt_root != q->mnt.mnt_root)
+ 			p = next_mnt(p, old);
+ 	}
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (is_zygote_pid) {
 +		last_entry_mnt_id = list_first_entry(&new_ns->list, struct mount, mnt_list)->mnt_id;
@@ -278,13 +265,10 @@ index 24f4b2c..05ceb29 100644
 +	current->susfs_last_fake_mnt_id = last_entry_mnt_id;
 +#endif
 +
- 		retval = -EPERM;
- 	if (retval)
- 		goto dput_out;
-@@ -3530,6 +3725,37 @@ struct vfsmount *kern_mount_data(struct file_system_type *type, void *data)
- 		real_mount(mnt)->mnt_ns = MNT_NS_INTERNAL;
- 	}
- 	return mnt;
+ 	namespace_unlock();
+@@ -3528,2 +3723,33 @@
+ 	.owner		= mntns_owner,
+ };
 +
 +#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 +extern void susfs_try_umount_all(uid_t uid);
@@ -316,7 +300,3 @@ index 24f4b2c..05ceb29 100644
 +	return false;
 +}
 +#endif
- }
- EXPORT_SYMBOL_GPL(kern_mount_data);
- 
-

@@ -1,11 +1,9 @@
 diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
-index 013d27d..be6ebf5 100644
 --- a/fs/overlayfs/inode.c
 +++ b/fs/overlayfs/inode.c
-@@ -16,6 +16,16 @@ static int ovl_copy_up_truncate(struct dentry *dentry)
+@@ -15,4 +15,14 @@
+ static int ovl_copy_up_truncate(struct dentry *dentry)
  {
- 	int err;
- 	struct dentry *parent;
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +	ovl_path_lowerdata(dentry, &realpath);
 +	if (likely(realpath.mnt && realpath.dentry)) {
@@ -16,7 +14,5 @@ index 013d27d..be6ebf5 100644
 +	}
 +#endif
 +
- 	struct kstat stat;
- 	struct path lowerpath;
- 
-
+ 	int err;
+ 	struct dentry *parent;
