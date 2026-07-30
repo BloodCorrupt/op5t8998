@@ -1,7 +1,7 @@
 diff --git a/kernel/sys.c b/kernel/sys.c
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
-@@ 1145,6 +1145,16 @@
+@@ -1145,6 +1145,16 @@
  SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
  {
  	struct new_utsname tmp;
