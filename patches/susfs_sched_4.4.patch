@@ -1,9 +1,9 @@
 diff --git a/include/linux/sched.h b/include/linux/sched.h
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -2204,6 +2204,10 @@ struct task_struct {
- 	atomic_t stack_refcount;
+@@ -2134,6 +2134,10 @@
  #endif
+ 	int pagefault_disabled;
  /* CPU-specific state of this task */
 +#ifdef CONFIG_KSU_SUSFS
 +	u64 susfs_task_state;

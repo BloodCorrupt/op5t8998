@@ -1,34 +1,31 @@
 diff --git a/fs/Makefile b/fs/Makefile
 --- a/fs/Makefile
 +++ b/fs/Makefile
-@@ -3,6 +3,8 @@
- 		seq_file.o xattr.o libfs.o fs-writeback.o \
+@@ -13,5 +13,7 @@
  		pnode.o splice.o sync.o utimes.o \
  		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o
- 
 +obj-$(CONFIG_KSU_SUSFS) += susfs.o
 +
+ 
  ifeq ($(CONFIG_BLOCK),y)
  obj-y +=	buffer.o block_dev.o direct-io.o mpage.o
+
 diff --git a/fs/dcache.c b/fs/dcache.c
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -37,6 +37,9 @@
- #include <linux/rculist_bl.h>
- #include <linux/prefetch.h>
+@@ -39,4 +39,7 @@
  #include <linux/ratelimit.h>
  #include <linux/list_lru.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +#include <linux/susfs_def.h>
 +#endif
+ #include <linux/kasan.h>
  
- #include "internal.h"
+
 diff --git a/fs/namei.c b/fs/namei.c
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -36,6 +36,9 @@
- #include <linux/posix_acl.h>
- #include <linux/hash.h>
+@@ -38,4 +38,7 @@
  #include <linux/init_task.h>
  #include <asm/uaccess.h>
 +#if defined(CONFIG_KSU_SUSFS_SUS_PATH) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
@@ -36,18 +33,20 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#endif
  
  #include "internal.h"
+
 diff --git a/fs/namespace.c b/fs/namespace.c
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -24,6 +24,35 @@
- #include <linux/proc_ns.h>
- #include <linux/magic.h>
+@@ -25,5 +25,8 @@
  #include <linux/bootmem.h>
  #include <linux/task_work.h>
 +#if defined(CONFIG_KSU_SUSFS_SUS_MOUNT) || defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
 +#include <linux/susfs_def.h>
 +#endif
  #include "pnode.h"
+ #include "internal.h"
+ 
+@@ -28,4 +28,30 @@
  #include "internal.h"
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -77,12 +76,12 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +#endif
 +
  /* Maximum number of mounts in a mount namespace */
+ unsigned int sysctl_mount_max __read_mostly = 100000;
+
 diff --git a/fs/notify/fdinfo.c b/fs/notify/fdinfo.c
 --- a/fs/notify/fdinfo.c
 +++ b/fs/notify/fdinfo.c
-@@ -12,6 +12,9 @@
- #include <linux/types.h>
- #include <linux/seq_file.h>
+@@ -13,4 +13,7 @@
  #include <linux/proc_fs.h>
  #include <linux/exportfs.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -90,11 +89,11 @@ diff --git a/fs/notify/fdinfo.c b/fs/notify/fdinfo.c
 +#endif
  
  #include "inotify/inotify.h"
+
 diff --git a/fs/overlayfs/overlayfs.h b/fs/overlayfs/overlayfs.h
 --- a/fs/overlayfs/overlayfs.h
 +++ b/fs/overlayfs/overlayfs.h
-@@ -11,6 +11,9 @@
- void ovl_dentry_version_inc(struct dentry *dentry);
+@@ -137,4 +137,7 @@
  void ovl_path_upper(struct dentry *dentry, struct path *path);
  void ovl_path_lower(struct dentry *dentry, struct path *path);
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
@@ -102,15 +101,15 @@ diff --git a/fs/overlayfs/overlayfs.h b/fs/overlayfs/overlayfs.h
 +#endif
  enum ovl_path_type ovl_path_real(struct dentry *dentry, struct path *path);
  int ovl_path_next(int idx, struct dentry *dentry, struct path *path);
+
 diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
 --- a/fs/overlayfs/super.c
 +++ b/fs/overlayfs/super.c
-@@ -18,6 +18,20 @@
- 	struct ovl_entry *oe = dentry->d_fsdata;
+@@ -180,5 +180,19 @@
  
  	*path = oe->numlower ? oe->lowerstack[0] : (struct path) { NULL, NULL };
  }
- 
++
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +void ovl_path_lowerdata(struct dentry *dentry, struct path *path)
 +{
@@ -124,18 +123,22 @@ diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
 +	}
 +}
 +#endif
-+
+ 
  int ovl_want_write(struct dentry *dentry)
+
 diff --git a/fs/proc/cmdline.c b/fs/proc/cmdline.c
 --- a/fs/proc/cmdline.c
 +++ b/fs/proc/cmdline.c
-@@ -27,6 +27,10 @@
+@@ -27,4 +27,8 @@
  #endif
  
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
 +extern int susfs_spoof_cmdline_or_bootconfig(struct seq_file *m);
 +#endif
 +
+ static int cmdline_proc_show(struct seq_file *m, void *v)
+ {
+@@ -29,3 +29,9 @@
  static int cmdline_proc_show(struct seq_file *m, void *v)
  {
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_CMDLINE_OR_BOOTCONFIG
@@ -145,20 +148,18 @@ diff --git a/fs/proc/cmdline.c b/fs/proc/cmdline.c
 +	}
 +#endif
  #ifdef CONFIG_INITRAMFS_IGNORE_SKIP_FLAG
- 	seq_printf(m, "%s\n", proc_command_line);
+
 diff --git a/fs/proc/fd.c b/fs/proc/fd.c
 --- a/fs/proc/fd.c
 +++ b/fs/proc/fd.c
-@@ -35,6 +35,9 @@
+@@ -17,3 +17,6 @@
  #include "fd.h"
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +#include <linux/susfs_def.h>
 +#endif
  
  static int seq_show(struct seq_file *m, void *v)
- {
- 	struct files_struct *files = NULL;
- 	int f_flags = 0, ret = -ENOENT;
+@@ -23,4 +23,7 @@
  	struct file *file = NULL;
  	struct task_struct *task;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -166,30 +167,13 @@ diff --git a/fs/proc/fd.c b/fs/proc/fd.c
 +#endif
  
  	task = get_proc_task(m->private);
- 	if (!task)
-@@ -51,6 +54,20 @@
- 	if (files) {
- 		int fd = proc_fd(m->private);
- 
- 		spin_lock(&files->file_lock);
- 		file = fcheck_files(files, fd);
- 		if (file) {
- 			struct fdtable *fdt = files_fdtable(files);
- 
- 			f_flags = file->f_flags;
- 			if (close_on_exec(fd, fdt))
- 				f_flags |= O_CLOEXEC;
- 
- 			get_file(file);
- 			ret = 0;
- 		}
- 		spin_unlock(&files->file_lock);
- 		put_files_struct(files);
- 	}
- 
- 	if (ret)
- 		return ret;
- 
+@@ -55,7 +55,19 @@
+ 	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\n",
+ 		   (long long)file->f_pos, f_flags,
+-		   real_mount(file->f_path.mnt)->mnt_id);
+-
+-	show_fd_locks(m, file, files);
++
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	mnt = real_mount(file->f_path.mnt);
 +	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
@@ -200,17 +184,17 @@ diff --git a/fs/proc/fd.c b/fs/proc/fd.c
 +			(long long)file->f_pos, f_flags,
 +			mnt->mnt_id);
 +#else
- 	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\n",
- 		   (long long)file->f_pos, f_flags,
- 		   real_mount(file->f_path.mnt)->mnt_id);
++	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\n",
++		   (long long)file->f_pos, f_flags,
++		   real_mount(file->f_path.mnt)->mnt_id);
 +#endif
- 
- 	show_fd_locks(m, file, files);
+ 	if (seq_has_overflowed(m))
+ 		goto out;
+
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
-@@ -54,6 +54,9 @@
- #include <linux/mmu_notifier.h>
+@@ -16,4 +16,7 @@
  #include <linux/page_idle.h>
  #include <linux/mm_inline.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
@@ -218,12 +202,11 @@ diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 +#endif
  #include <linux/ctype.h>
  
- #include <asm/elf.h>
+
 diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
 --- a/fs/proc_namespace.c
 +++ b/fs/proc_namespace.c
-@@ -62,6 +62,9 @@
- #include <linux/security.h>
+@@ -12,4 +12,7 @@
  #include <linux/fs_struct.h>
  #include "proc/internal.h" /* only for get_proc_task() in ->open() */
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
@@ -231,12 +214,11 @@ diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
 +#endif
  
  #include "pnode.h"
- #include "internal.h"
+
 diff --git a/fs/readdir.c b/fs/readdir.c
 --- a/fs/readdir.c
 +++ b/fs/readdir.c
-@@ -70,6 +70,13 @@
- #include <linux/security.h>
+@@ -19,5 +19,8 @@
  #include <linux/syscalls.h>
  #include <linux/unistd.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
@@ -245,28 +227,35 @@ diff --git a/fs/readdir.c b/fs/readdir.c
  
  #include <asm/uaccess.h>
  
+@@ -22,3 +22,7 @@
+ #include <asm/uaccess.h>
++
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +extern int susfs_sus_ino_for_filldir64(unsigned long ino);
 +#endif
-+
+ 
  int iterate_dir(struct file *file, struct dir_context *ctx)
+
 diff --git a/fs/stat.c b/fs/stat.c
 --- a/fs/stat.c
 +++ b/fs/stat.c
-@@ -78,11 +78,29 @@
+@@ -16,4 +16,7 @@
  #include <linux/pagemap.h>
- 
- #include <asm/uaccess.h>
- #include <asm/unistd.h>
 +#if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MOUNT)
 +#include <linux/susfs_def.h>
 +#endif
+ 
+ #include <asm/uaccess.h>
+ #include <asm/unistd.h>
+@@ -20,3 +20,7 @@
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 +extern void susfs_sus_ino_for_generic_fillattr(unsigned long ino, struct kstat *stat);
 +#endif
 +
  void generic_fillattr(struct inode *inode, struct kstat *stat)
+ {
+@@ -22,3 +22,14 @@
  {
 +#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 +	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
@@ -281,25 +270,22 @@ diff --git a/fs/stat.c b/fs/stat.c
 +#endif
  	stat->dev = inode->i_sb->s_dev;
  	stat->ino = inode->i_ino;
+
 diff --git a/fs/statfs.c b/fs/statfs.c
 --- a/fs/statfs.c
 +++ b/fs/statfs.c
-@@ -89,6 +89,10 @@
- #include <linux/statfs.h>
- #include <linux/security.h>
+@@ -9,2 +9,6 @@
  #include <linux/uaccess.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +#include <linux/susfs_def.h>
 +#include "mount.h"
 +#endif
  #include "internal.h"
- 
- static int flags_by_mnt(int mnt_flags)
+
 diff --git a/include/linux/mount.h b/include/linux/mount.h
 --- a/include/linux/mount.h
 +++ b/include/linux/mount.h
-@@ -96,6 +96,9 @@
- 	struct super_block *mnt_sb;	/* pointer to superblock */
+@@ -69,4 +69,7 @@
  	int mnt_flags;
  	void *data;
 +#ifdef CONFIG_KSU_SUSFS
@@ -307,17 +293,17 @@ diff --git a/include/linux/mount.h b/include/linux/mount.h
 +#endif
  };
  
- struct file; /* forward dec */
+
 diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
 --- a/kernel/kallsyms.c
 +++ b/kernel/kallsyms.c
-@@ -528,7 +528,19 @@
- 		seq_printf(m, "%pK %c %s\t[%s]\n", (void *)iter->value,
- 			   type, iter->name, iter->module_name);
+@@ -547,5 +547,15 @@
  	} else
+-		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
+-			   iter->type, iter->name);
 +#ifndef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
- 		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
- 			   iter->type, iter->name);
++		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
++			   iter->type, iter->name);
 +#else
 +	{
 +		if (strstr(iter->name, "ksu_") || !strncmp(iter->name, "susfs_", 6) || !strncmp(iter->name, "ksud", 4)) {
@@ -329,12 +315,11 @@ diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
 +#endif
  	return 0;
  }
- 
+
 diff --git a/kernel/sys.c b/kernel/sys.c
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
-@@ -121,9 +121,15 @@
- 	return ret;
+@@ -1143,4 +1143,7 @@
  }
  
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
@@ -342,10 +327,9 @@ diff --git a/kernel/sys.c b/kernel/sys.c
 +#endif
  SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
  {
- 	struct new_utsname tmp;
- 
- 	down_read(&uts_sem);
+@@ -1150,2 +1150,5 @@
  	memcpy(&tmp, utsname(), sizeof(tmp));
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 +	susfs_spoof_uname(&tmp);
 +#endif
+ 	up_read(&uts_sem);
