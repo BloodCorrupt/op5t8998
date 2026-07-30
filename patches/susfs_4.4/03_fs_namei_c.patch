@@ -9,135 +9,119 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#endif
  #include <linux/init_task.h>
  #include <asm/uaccess.h>
-@@ -152,4 +155,11 @@
- 		__putname(result);
- 		return ERR_PTR(len);
-+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-+extern struct filename* susfs_get_redirected_path(unsigned long ino);
-+#endif
-+
+@@ -128,6 +131,13 @@
+ struct filename *
+ getname_flags(const char __user *filename, int flags, int *empty)
+ {
+ 	struct filename *result;
+ 	char *kname;
+ 	int len;
 +#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 +	struct filename *fake_pathname;
 +#endif
- 	}
- 
-@@ -185,4 +195,10 @@
- 			kfree(result);
- 			return ERR_PTR(-ENAMETOOLONG);
-+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+	if (!IS_ERR(dentry) && dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
-+		dput(dentry);
-+		return ERR_PTR(-ENOENT);
-+	}
-+#endif
- 		}
- 	}
-@@ -528,4 +544,10 @@
- 		void *cookie;
- 		const char *name;
-+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+	if (link->dentry->d_inode && unlikely(link->dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
-+		return -ENOENT;
-+	}
-+#endif
 +
- 		struct inode *inode;
- 		unsigned seq;
-@@ -992,4 +1014,10 @@
++#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
++extern struct filename* susfs_get_redirected_path(unsigned long ino);
++#endif
+@@ -990,6 +1000,12 @@
+ static inline int may_follow_link(struct nameidata *nd)
+ {
  	const struct inode *inode;
  	const struct inode *parent;
+ 	kuid_t puid;
+ 
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (nd->inode && unlikely(nd->inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		return -ENOENT;
 +	}
 +#endif
 +
- 	kuid_t puid;
- 
-@@ -1082,4 +1110,10 @@
- 
- 	audit_log_link_denied("linkat", link);
+ 	if (!sysctl_protected_symlinks)
+@@ -1068,4 +1084,10 @@
+ static int may_linkat(struct path *link)
+ {
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+	if (unlikely(inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
++	if (link->dentry->d_inode && unlikely(link->dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		return -ENOENT;
 +	}
 +#endif
 +
- 	return -EPERM;
- }
-@@ -1107,4 +1141,10 @@
-  */
+ 	struct inode *inode;
+@@ -1108,6 +1130,12 @@
  static int may_create_in_sticky(umode_t dir_mode, kuid_t dir_uid,
-+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+	if (unlikely(inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
-+		return -ENOENT;
-+	}
-+#endif
-+
  				struct inode * const inode)
  {
-@@ -1577,4 +1617,10 @@
- 			dput(old);
- 			if (unlikely(!path_connected(&nd->path)))
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (unlikely(inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		return -ENOENT;
 +	}
 +#endif
 +
- 				return -ENOENT;
- 			break;
-@@ -1649,4 +1695,10 @@
+ 	if ((!sysctl_protected_fifos && S_ISFIFO(inode->i_mode)) ||
+@@ -1128,6 +1156,12 @@
+ const char *get_link(struct nameidata *nd)
+ {
+ 	struct saved *last = nd->stack + nd->depth - 1;
+ 	struct dentry *dentry = last->link.dentry;
+ 	struct inode *inode = last->inode;
+ 	int error;
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++	if (dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
++		return ERR_PTR(-ENOENT);
++	}
++#endif
++
+ 	const char *res;
+@@ -1649,6 +1683,12 @@
  	if (unlikely(old)) {
  		dput(dentry);
+ 		dentry = old;
+ 	}
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (!IS_ERR(dentry) && dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		dput(dentry);
 +		return ERR_PTR(-ENOENT);
 +	}
 +#endif
- 		dentry = old;
- 	}
-@@ -2135,4 +2187,10 @@
+ 	return dentry;
+ }
+@@ -2132,6 +2172,12 @@
+ 		if (unlikely(!d_can_lookup(nd->path.dentry))) {
+ 			if (nd->flags & LOOKUP_RCU) {
+ 				if (unlazy_walk(nd, NULL, 0))
  					return -ECHILD;
  			}
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+		// we deal with sus sub path here
-+		if (nd->inode && unlikely(nd->inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
-+			return 0;
-+		}
++			// we deal with sus sub path here
++			if (nd->inode && unlikely(nd->inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
++				return 0;
++			}
 +#endif
  			return -ENOTDIR;
- 		}
-@@ -2320,4 +2378,10 @@
- 
+@@ -2321,6 +2367,12 @@
  	if (likely(!retval))
+ 		audit_inode(name, path->dentry, flags & LOOKUP_PARENT);
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (!retval && path->dentry->d_inode && unlikely(path->dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		putname(name);
 +		return -ENOENT;
 +	}
 +#endif
- 		audit_inode(name, path->dentry, flags & LOOKUP_PARENT);
  	restore_nameidata();
-@@ -2751,4 +2815,16 @@
-  *  4. We can't do it if dir is immutable (done in permission())
-  */
-+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+	int error;
-+#endif
+ 	putname(name);
+@@ -2753,6 +2805,12 @@
+ static inline int may_create(struct vfsmount *mnt, struct inode *dir, struct dentry *child)
+ {
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (child->d_inode && unlikely(child->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
-+		error = inode_permission2(mnt, dir, MAY_WRITE | MAY_EXEC);
-+		if (error) {
++		int error = inode_permission2(mnt, dir, MAY_WRITE | MAY_EXEC);
++		if (error)
 +			return error;
-+		}
 +		return -ENOENT;
 +	}
 +#endif
- static inline int may_create(struct vfsmount *mnt, struct inode *dir, struct dentry *child)
- {
-@@ -3537,4 +3613,23 @@
+ 	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
+@@ -3537,6 +3595,24 @@
  	if (unlikely(filp == ERR_PTR(-ECHILD)))
  		filp = path_openat(&nd, op, flags);
 +#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
