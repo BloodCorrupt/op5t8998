@@ -121,7 +121,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +	}
 +#endif
  	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
-@@ -3537,4 +3595,23 @@
+@@ -3537,4 +3597,23 @@
  	if (unlikely(filp == ERR_PTR(-ECHILD)))
  		filp = path_openat(&nd, op, flags);
 +#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
