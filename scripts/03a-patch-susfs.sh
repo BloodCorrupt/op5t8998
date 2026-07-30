@@ -132,18 +132,12 @@ apply_patch() {
         return 0
     fi
     
-    # 4. Fallback: try patch command with fuzz
-    if patch -p1 --dry-run < "$clean_patch" &>/dev/null; then
-        patch -p1 < "$clean_patch"
-        success "  Applied with patch(1): ${patch_name}"
-        APPLIED=$((APPLIED + 1))
-        rm -f "$clean_patch"
-        return 0
-    fi
+    # 4. Fallback: try git apply with --reject
+    git apply --reject "$clean_patch" || true
     
-    rm -f "$clean_patch"
-    find . -name "*.rej" -exec cat {} \;
+    find . -name "*.rej" -exec echo "REJECT FILE: {}" \; -exec cat {} \;
     find . -name "*.rej" -delete
+    rm -f "$clean_patch"
     error "  FAILED to apply: ${patch_name}"
     error "  Patch file: ${patch_file}"
     FAILED=$((FAILED + 1))
