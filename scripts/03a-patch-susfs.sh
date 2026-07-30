@@ -142,6 +142,8 @@ apply_patch() {
     fi
     
     rm -f "$clean_patch"
+    find . -name "*.rej" -exec cat {} \;
+    find . -name "*.rej" -delete
     error "  FAILED to apply: ${patch_name}"
     error "  Patch file: ${patch_file}"
     FAILED=$((FAILED + 1))
