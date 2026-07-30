@@ -1,25 +1,31 @@
 diff --git a/fs/proc/fd.c b/fs/proc/fd.c
+index 3c2a915..a576bc4 100644
 --- a/fs/proc/fd.c
 +++ b/fs/proc/fd.c
-@@ -11,4 +11,7 @@
- #include <linux/fs.h>
+@@ -12,6 +12,9 @@
+ 
+ #include <linux/proc_fs.h>
  
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +#include <linux/susfs_def.h>
 +#endif
- #include <linux/proc_fs.h>
- 
-@@ -21,4 +24,7 @@
- 	struct files_struct *files = NULL;
+ #include "../mount.h"
+ #include "internal.h"
+ #include "fd.h"
+@@ -22,6 +25,9 @@ static int seq_show(struct seq_file *m, void *v)
  	int f_flags = 0, ret = -ENOENT;
+ 	struct file *file = NULL;
+ 	struct task_struct *task;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	struct mount *mnt = NULL;
 +#endif
- 	struct file *file = NULL;
- 	struct task_struct *task;
-@@ -51,4 +57,15 @@
  
+ 	task = get_proc_task(m->private);
+ 	if (!task)
+@@ -52,6 +58,17 @@ static int seq_show(struct seq_file *m, void *v)
  	if (ret)
+ 		return ret;
+ 
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	mnt = real_mount(file->f_path.mnt);
 +	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
@@ -31,5 +37,7 @@ diff --git a/fs/proc/fd.c b/fs/proc/fd.c
 +			mnt->mnt_id);
 +#else
 +#endif
- 		return ret;
- 
+ 	seq_printf(m, "pos:\t%lli\nflags:\t0%o\nmnt_id:\t%i\n",
+ 		   (long long)file->f_pos, f_flags,
+ 		   real_mount(file->f_path.mnt)->mnt_id);
+

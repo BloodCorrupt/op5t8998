@@ -1,9 +1,11 @@
 diff --git a/fs/overlayfs/readdir.c b/fs/overlayfs/readdir.c
+index 9ff8f81..19f9b7c 100644
 --- a/fs/overlayfs/readdir.c
 +++ b/fs/overlayfs/readdir.c
-@@ -133,4 +133,16 @@
- 	p = ovl_cache_entry_new(rdd, name, len, ino, d_type);
+@@ -134,6 +134,18 @@ static int ovl_cache_entry_add_rb(struct ovl_readdir_data *rdd,
  	if (p == NULL)
+ 		return -ENOMEM;
+ 
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +	ovl_path_lowerdata(file->f_path.dentry, &realpath);
 +	if (likely(realpath.mnt && realpath.dentry)) {
@@ -16,5 +18,7 @@ diff --git a/fs/overlayfs/readdir.c b/fs/overlayfs/readdir.c
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +bypass_orig_flow:
 +#endif
- 		return -ENOMEM;
- 
+ 	list_add_tail(&p->l_node, rdd->list);
+ 	rb_link_node(&p->node, parent, newp);
+ 	rb_insert_color(&p->node, &rdd->root);
+

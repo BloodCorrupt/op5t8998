@@ -1,21 +1,21 @@
 diff --git a/fs/namei.c b/fs/namei.c
+index 9ec0013..bc64a86 100644
 --- a/fs/namei.c
 +++ b/fs/namei.c
-@@ -36,4 +36,7 @@
- #include <linux/posix_acl.h>
- #include <linux/hash.h>
+@@ -43,6 +43,9 @@
+ 
+ #define CREATE_TRACE_POINTS
+ #include <trace/events/namei.h>
 +#if defined(CONFIG_KSU_SUSFS_SUS_PATH) || defined(CONFIG_KSU_SUSFS_OPEN_REDIRECT)
 +#include <linux/susfs_def.h>
 +#endif
- #include <linux/init_task.h>
- #include <asm/uaccess.h>
-@@ -128,6 +131,13 @@
- struct filename *
- getname_flags(const char __user *filename, int flags, int *empty)
- {
- 	struct filename *result;
- 	char *kname;
- 	int len;
+ 
+ /* [Feb-1997 T. Schoebel-Theuer]
+  * Fundamental changes in the pathname lookup mechanisms (namei)
+@@ -137,6 +140,13 @@ getname_flags(const char __user *filename, int flags, int *empty)
+ 		return result;
+ 
+ 	result = __getname();
 +#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 +	struct filename *fake_pathname;
 +#endif
@@ -23,95 +23,104 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 +extern struct filename* susfs_get_redirected_path(unsigned long ino);
 +#endif
-@@ -990,7 +1000,13 @@
- static inline int may_follow_link(struct nameidata *nd)
- {
- 	const struct inode *inode;
- 	const struct inode *parent;
- 	kuid_t puid;
+ 	if (unlikely(!result))
+ 		return ERR_PTR(-ENOMEM);
  
+@@ -1000,6 +1010,12 @@ static inline int may_follow_link(struct nameidata *nd)
+ 	inode = nd->stack[0].inode;
+ 	if (uid_eq(current_cred()->fsuid, inode->i_uid))
+ 		return 0;
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (nd->inode && unlikely(nd->inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		return -ENOENT;
 +	}
 +#endif
 +
- 	if (!sysctl_protected_symlinks)
-@@ -1068,3 +1084,9 @@
- static int may_linkat(struct path *link)
- {
+ 
+ 	/* Allowed if parent directory not sticky and world-writable. */
+ 	parent = nd->inode;
+@@ -1074,6 +1090,12 @@ static int may_linkat(struct path *link)
+ 
+ 	inode = link->dentry->d_inode;
+ 
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (link->dentry->d_inode && unlikely(link->dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		return -ENOENT;
 +	}
 +#endif
 +
- 	struct inode *inode;
-@@ -1108,4 +1130,10 @@
- static int may_create_in_sticky(umode_t dir_mode, kuid_t dir_uid,
- 				struct inode * const inode)
- {
+ 	/* Source inode owner (or CAP_FOWNER) can hardlink all they like,
+ 	 * otherwise, it must be a safe source.
+ 	 */
+@@ -1115,6 +1137,12 @@ static int may_create_in_sticky(umode_t dir_mode, kuid_t dir_uid,
+ 	    uid_eq(current_fsuid(), inode->i_uid))
+ 		return 0;
+ 
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (unlikely(inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		return -ENOENT;
 +	}
 +#endif
 +
- 	if ((!sysctl_protected_fifos && S_ISFIFO(inode->i_mode)) ||
-@@ -1128,7 +1156,13 @@
- const char *get_link(struct nameidata *nd)
- {
- 	struct saved *last = nd->stack + nd->depth - 1;
- 	struct dentry *dentry = last->link.dentry;
- 	struct inode *inode = last->inode;
- 	int error;
+ 	if (likely(dir_mode & 0002) ||
+ 	    (dir_mode & 0020 &&
+ 	     ((sysctl_protected_fifos >= 2 && S_ISFIFO(inode->i_mode)) ||
+@@ -1138,6 +1166,12 @@ const char *get_link(struct nameidata *nd)
+ 		cond_resched();
+ 	} else if (atime_needs_update(&last->link, inode)) {
+ 		if (unlikely(unlazy_walk(nd, NULL, 0)))
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		return ERR_PTR(-ENOENT);
 +	}
 +#endif
 +
- 	const char *res;
-@@ -1649,6 +1683,12 @@
- 	if (unlikely(old)) {
- 		dput(dentry);
- 		dentry = old;
+ 			return ERR_PTR(-ECHILD);
+ 		touch_atime(&last->link);
  	}
+@@ -1658,6 +1692,12 @@ static struct dentry *__lookup_hash(struct qstr *name,
+ {
+ 	bool need_lookup;
+ 	struct dentry *dentry;
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (!IS_ERR(dentry) && dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		dput(dentry);
 +		return ERR_PTR(-ENOENT);
 +	}
 +#endif
- 	return dentry;
- }
-@@ -2132,6 +2172,12 @@
- 		if (unlikely(!d_can_lookup(nd->path.dentry))) {
- 			if (nd->flags & LOOKUP_RCU) {
- 				if (unlazy_walk(nd, NULL, 0))
- 					return -ECHILD;
- 			}
+ 
+ 	dentry = lookup_dcache(name, base, flags, &need_lookup);
+ 	if (!need_lookup)
+@@ -2141,6 +2181,12 @@ OK:
+ 
+ static const char *path_init(struct nameidata *nd, unsigned flags)
+ {
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +			// we deal with sus sub path here
 +			if (nd->inode && unlikely(nd->inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +				return 0;
 +			}
 +#endif
- 			return -ENOTDIR;
-@@ -2321,4 +2367,10 @@
- 	if (likely(!retval))
- 		audit_inode(name, path->dentry, flags & LOOKUP_PARENT);
+ 	int retval = 0;
+ 	const char *s = nd->name->name;
+ 
+@@ -2328,6 +2374,12 @@ static int filename_lookup(int dfd, struct filename *name, unsigned flags,
+ /* Returns 0 and nd will be valid on success; Retuns error, otherwise. */
+ static int path_parentat(struct nameidata *nd, unsigned flags,
+ 				struct path *parent)
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (!retval && path->dentry->d_inode && unlikely(path->dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		putname(name);
 +		return -ENOENT;
 +	}
 +#endif
- 	restore_nameidata();
- 	putname(name);
-@@ -2753,3 +2805,11 @@
- static inline int may_create(struct vfsmount *mnt, struct inode *dir, struct dentry *child)
  {
+ 	const char *s = path_init(nd, flags);
+ 	int err;
+@@ -2759,6 +2811,14 @@ static inline int may_create(struct vfsmount *mnt, struct inode *dir, struct den
+ 		return -ENOENT;
+ 	return inode_permission2(mnt, dir, MAY_WRITE | MAY_EXEC);
+ }
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (child->d_inode && unlikely(child->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +		int error = inode_permission2(mnt, dir, MAY_WRITE | MAY_EXEC);
@@ -120,10 +129,13 @@ diff --git a/fs/namei.c b/fs/namei.c
 +		return -ENOENT;
 +	}
 +#endif
- 	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
-@@ -3537,4 +3597,23 @@
- 	if (unlikely(filp == ERR_PTR(-ECHILD)))
- 		filp = path_openat(&nd, op, flags);
+ 
+ /*
+  * p1 and p2 should be directories on the same fs.
+@@ -3544,6 +3604,25 @@ struct file *do_filp_open(int dfd, struct filename *pathname,
+ 
+ struct file *do_file_open_root(struct dentry *dentry, struct vfsmount *mnt,
+ 		const char *name, const struct open_flags *op)
 +#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 +	if (!IS_ERR(filp) && unlikely(filp->f_inode->i_state & INODE_STATE_OPEN_REDIRECT) && current_uid().val < 2000) {
 +		fake_pathname = susfs_get_redirected_path(filp->f_inode->i_ino);
@@ -143,5 +155,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +		}
 +	}
 +#endif
- 	if (unlikely(filp == ERR_PTR(-ESTALE)))
- 		filp = path_openat(&nd, op, flags | LOOKUP_REVAL);
+ {
+ 	struct nameidata nd;
+ 	struct file *file;
+

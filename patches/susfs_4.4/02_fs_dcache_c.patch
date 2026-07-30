@@ -1,32 +1,40 @@
 diff --git a/fs/dcache.c b/fs/dcache.c
+index d065854..f45c55b 100644
 --- a/fs/dcache.c
 +++ b/fs/dcache.c
-@@ -38,4 +38,7 @@
- #include <linux/prefetch.h>
+@@ -39,6 +39,9 @@
  #include <linux/ratelimit.h>
+ #include <linux/list_lru.h>
+ #include <linux/kasan.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +#include <linux/susfs_def.h>
 +#endif
- #include <linux/list_lru.h>
- #include <linux/kasan.h>
-@@ -272,4 +275,10 @@
- void take_dentry_name_snapshot(struct name_snapshot *name, struct dentry *dentry)
+ 
+ #include "internal.h"
+ #include "mount.h"
+@@ -273,6 +276,12 @@ void take_dentry_name_snapshot(struct name_snapshot *name, struct dentry *dentry
  {
+ 	spin_lock(&dentry->d_lock);
+ 	if (unlikely(dname_external(dentry))) {
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +		if (dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +			continue;
 +		}
 +#endif
 +
- 	spin_lock(&dentry->d_lock);
- 	if (unlikely(dname_external(dentry))) {
-@@ -921,4 +930,9 @@
- 		spin_unlock(&alias->d_lock);
+ 		struct external_name *p = external_name(dentry);
+ 		atomic_inc(&p->u.count);
+ 		spin_unlock(&dentry->d_lock);
+@@ -922,6 +931,11 @@ again:
  		goto again;
+ 	}
+ 	return NULL;
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +			if (dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
 +				continue;
 +			}
 +#endif
- 	}
- 	return NULL;
+ }
+ 
+ struct dentry *d_find_alias(struct inode *inode)
+
