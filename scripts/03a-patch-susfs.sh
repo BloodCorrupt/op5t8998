@@ -32,6 +32,48 @@ cd "$KERNEL_PATH"
 substep "Resetting kernel tree to clean state..."
 git reset --hard HEAD 2>/dev/null || true
 
+# ============================================================
+# Phase 0: Clone susfs4ksu and copy source files into kernel tree
+# ============================================================
+# The SuSFS patches add #include <linux/susfs_def.h> etc, but the
+# actual implementation files (susfs.c, sus_su.c, susfs_def.h, susfs.h)
+# live in the susfs4ksu repo and must be copied into the kernel tree.
+SUSFS_REPO="https://github.com/nicholaschiasson/susfs4ksu"
+SUSFS_BRANCH="kernel-4.9"
+SUSFS_DIR="${BUILDER_ROOT}/susfs4ksu"
+
+info "Phase 0: Copying SuSFS source files into kernel tree..."
+separator
+
+if [ ! -d "$SUSFS_DIR" ]; then
+    substep "Cloning susfs4ksu (branch: ${SUSFS_BRANCH})..."
+    git clone --depth 1 -b "$SUSFS_BRANCH" "$SUSFS_REPO" "$SUSFS_DIR"
+fi
+
+SUSFS_KP="${SUSFS_DIR}/kernel_patches"
+
+# Copy fs/ source files
+substep "Copying SuSFS fs/ source files..."
+for src_file in susfs.c sus_su.c; do
+    if [ -f "${SUSFS_KP}/fs/${src_file}" ]; then
+        cp -v "${SUSFS_KP}/fs/${src_file}" "fs/${src_file}"
+    else
+        warn "  ${src_file} not found in susfs4ksu repo"
+    fi
+done
+
+# Copy include/ header files
+substep "Copying SuSFS header files..."
+for hdr_file in susfs_def.h susfs.h; do
+    if [ -f "${SUSFS_KP}/include/linux/${hdr_file}" ]; then
+        cp -v "${SUSFS_KP}/include/linux/${hdr_file}" "include/linux/${hdr_file}"
+    else
+        warn "  ${hdr_file} not found in susfs4ksu repo"
+    fi
+done
+
+success "SuSFS source files copied."
+
 # Track results
 APPLIED=0
 SKIPPED=0
