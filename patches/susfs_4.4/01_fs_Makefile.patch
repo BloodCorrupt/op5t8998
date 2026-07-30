@@ -1,7 +1,7 @@
 diff --git a/fs/Makefile b/fs/Makefile
 --- a/fs/Makefile
 +++ b/fs/Makefile
-@@ -130,2 +130,4 @@
+@@ -130,1 +130,3 @@
  obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
 +
 +obj-$(CONFIG_KSU_SUSFS) += susfs.o

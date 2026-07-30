@@ -23,7 +23,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
 +extern struct filename* susfs_get_redirected_path(unsigned long ino);
 +#endif
-@@ -990,6 +1000,12 @@
+@@ -990,7 +1000,13 @@
  static inline int may_follow_link(struct nameidata *nd)
  {
  	const struct inode *inode;
@@ -37,7 +37,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#endif
 +
  	if (!sysctl_protected_symlinks)
-@@ -1068,4 +1084,10 @@
+@@ -1068,3 +1084,9 @@
  static int may_linkat(struct path *link)
  {
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
@@ -47,7 +47,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#endif
 +
  	struct inode *inode;
-@@ -1108,6 +1130,12 @@
+@@ -1108,4 +1130,10 @@
  static int may_create_in_sticky(umode_t dir_mode, kuid_t dir_uid,
  				struct inode * const inode)
  {
@@ -58,7 +58,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#endif
 +
  	if ((!sysctl_protected_fifos && S_ISFIFO(inode->i_mode)) ||
-@@ -1128,6 +1156,12 @@
+@@ -1128,7 +1156,13 @@
  const char *get_link(struct nameidata *nd)
  {
  	struct saved *last = nd->stack + nd->depth - 1;
@@ -98,7 +98,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +			}
 +#endif
  			return -ENOTDIR;
-@@ -2321,6 +2367,12 @@
+@@ -2321,4 +2367,10 @@
  	if (likely(!retval))
  		audit_inode(name, path->dentry, flags & LOOKUP_PARENT);
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
@@ -109,7 +109,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#endif
  	restore_nameidata();
  	putname(name);
-@@ -2753,6 +2805,12 @@
+@@ -2753,3 +2805,11 @@
  static inline int may_create(struct vfsmount *mnt, struct inode *dir, struct dentry *child)
  {
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
@@ -121,7 +121,7 @@ diff --git a/fs/namei.c b/fs/namei.c
 +	}
 +#endif
  	audit_inode_child(dir, child, AUDIT_TYPE_CHILD_CREATE);
-@@ -3537,6 +3595,24 @@
+@@ -3537,4 +3595,23 @@
  	if (unlikely(filp == ERR_PTR(-ECHILD)))
  		filp = path_openat(&nd, op, flags);
 +#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
