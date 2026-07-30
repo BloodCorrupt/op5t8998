@@ -13,6 +13,15 @@ load_config
 
 step "Applying Manual Hook Patches"
 
+# SuSFS inline hook mode is mutually exclusive with manual hooks.
+# When SuSFS is enabled, skip this step entirely.
+if [ "$ENABLE_SUSFS" = "true" ]; then
+    info "SuSFS is ENABLED — skipping manual hook patches."
+    info "SuSFS patches will be applied by step 03a instead."
+    mark_step_done "03-patch-kernel"
+    exit 0
+fi
+
 if [ ! -d "$KERNEL_PATH" ] || [ ! -f "$KERNEL_PATH/Makefile" ]; then
     error "Kernel source not found at ${KERNEL_PATH}"
     error "Run step 01 (Clone Sources) first."

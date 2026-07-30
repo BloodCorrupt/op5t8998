@@ -37,11 +37,28 @@ show_banner() {
 show_status() {
     echo -e "${WHITE}── Build State ──────────────────────────────────${NC}"
     
+    # Show SuSFS status
+    if [ "$ENABLE_SUSFS" = "true" ]; then
+        echo -e "  ${CYAN}Hook Mode: SuSFS Inline Hook${NC}"
+    else
+        echo -e "  ${WHITE}Hook Mode: Manual Hook${NC}"
+    fi
+    echo ""
+    
     local steps=(
         "00-install-deps:Install Dependencies"
         "01-clone-sources:Clone Sources"
         "02-integrate-resukisu:Integrate ReSukiSU"
-        "03-patch-kernel:Apply Patches"
+    )
+    
+    # Show the correct patch step based on mode
+    if [ "$ENABLE_SUSFS" = "true" ]; then
+        steps+=("03a-patch-susfs:Apply SuSFS Patches")
+    else
+        steps+=("03-patch-kernel:Apply Manual Hook Patches")
+    fi
+    
+    steps+=(
         "04-configure-kernel:Configure Kernel"
         "05-build-kernel:Build Kernel"
         "06-package-output:Package Output"
@@ -77,6 +94,11 @@ show_menu() {
     echo -e "  ${MAGENTA}9)${NC}  Clean Build (reset all state)"
     echo -e "  ${MAGENTA}m)${NC}  Configure Kernel (with menuconfig)"
     echo -e "  ${MAGENTA}c)${NC}  Edit Configuration"
+    if [ "$ENABLE_SUSFS" = "true" ]; then
+        echo -e "  ${CYAN}s)${NC}  Toggle SuSFS: ${GREEN}ON${NC} → OFF"
+    else
+        echo -e "  ${CYAN}s)${NC}  Toggle SuSFS: ${RED}OFF${NC} → ON"
+    fi
     echo -e "  ${RED}0)${NC}  Exit"
     echo ""
 }
@@ -99,6 +121,11 @@ run_step() {
 # ── Full build ──
 full_build() {
     step "Starting Full Build Pipeline"
+    if [ "$ENABLE_SUSFS" = "true" ]; then
+        info "Mode: SuSFS Inline Hook"
+    else
+        info "Mode: Manual Hook"
+    fi
     echo ""
     print_env_info
     
@@ -106,7 +133,17 @@ full_build() {
         "00-install-deps.sh"
         "01-clone-sources.sh"
         "02-integrate-resukisu.sh"
-        "03-patch-kernel.sh"
+    )
+    
+    # Route to correct patch step based on SuSFS toggle
+    if [ "$ENABLE_SUSFS" = "true" ]; then
+        steps+=("03-patch-kernel.sh")   # Will skip (early exit when SuSFS=true)
+        steps+=("03a-patch-susfs.sh")   # Applies SuSFS patches
+    else
+        steps+=("03-patch-kernel.sh")   # Applies manual hook patches
+    fi
+    
+    steps+=(
         "04-configure-kernel.sh"
         "05-build-kernel.sh"
         "06-package-output.sh"
@@ -170,13 +207,31 @@ main() {
             2) run_step "00-install-deps.sh" ;;
             3) run_step "01-clone-sources.sh" ;;
             4) run_step "02-integrate-resukisu.sh" ;;
-            5) run_step "03-patch-kernel.sh" ;;
+            5) 
+                if [ "$ENABLE_SUSFS" = "true" ]; then
+                    run_step "03a-patch-susfs.sh"
+                else
+                    run_step "03-patch-kernel.sh"
+                fi
+                ;;
             6) run_step "04-configure-kernel.sh" ;;
             7) run_step "05-build-kernel.sh" ;;
             8) run_step "06-package-output.sh" ;;
             9) clean_build ;;
             m|M) run_step "04-configure-kernel.sh" --menuconfig ;;
             c|C) "${EDITOR:-nano}" "${BUILDER_ROOT}/config/builder.conf" ;;
+            s|S)
+                if [ "$ENABLE_SUSFS" = "true" ]; then
+                    sed -i 's/ENABLE_SUSFS="true"/ENABLE_SUSFS="false"/' "${BUILDER_ROOT}/config/builder.conf"
+                    ENABLE_SUSFS="false"
+                    success "SuSFS DISABLED. Using Manual Hook mode."
+                else
+                    sed -i 's/ENABLE_SUSFS="false"/ENABLE_SUSFS="true"/' "${BUILDER_ROOT}/config/builder.conf"
+                    ENABLE_SUSFS="true"
+                    success "SuSFS ENABLED. Using SuSFS Inline Hook mode."
+                fi
+                warn "Run a Clean Build (9) before building with the new mode!"
+                ;;
             0|q|Q) 
                 info "Goodbye! 👋"
                 exit 0
@@ -201,7 +256,13 @@ if [ $# -gt 0 ]; then
         --deps)     run_step "00-install-deps.sh" ;;
         --clone)    run_step "01-clone-sources.sh" ;;
         --integrate) run_step "02-integrate-resukisu.sh" ;;
-        --patch)    run_step "03-patch-kernel.sh" ;;
+        --patch)    
+            if [ "$ENABLE_SUSFS" = "true" ]; then
+                run_step "03a-patch-susfs.sh"
+            else
+                run_step "03-patch-kernel.sh"
+            fi
+            ;;
         --config)   run_step "04-configure-kernel.sh" ;;
         --build)    run_step "05-build-kernel.sh" ;;
         --package)  run_step "06-package-output.sh" ;;
