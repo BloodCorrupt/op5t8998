@@ -59,6 +59,47 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +#endif
  static inline struct hlist_head *mp_hash(struct dentry *dentry)
  {
+@@ -90,4 +90,22 @@
+ }
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++static struct mount *alloc_vfsmnt(const char *name, bool should_spoof, int custom_mnt_id)
++#else
++#endif
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++		if (should_spoof) {
++			if (!custom_mnt_id) {
++				err = susfs_mnt_alloc_id(mnt);
++			} else {
++				mnt->mnt_id = custom_mnt_id;
++				err = 0;
++			}
++			goto bypass_orig_flow;
++		}
++#endif
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++bypass_orig_flow:
++#endif
+ static inline struct hlist_head *mp_hash(struct dentry *dentry)
+ {
+@@ -105,4 +105,17 @@
+ 	int res;
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++	if (mnt->mnt_id >= DEFAULT_SUS_MNT_ID) {
++		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
++			return -ENOMEM;
++		// If so, assign a sus mnt_group id DEFAULT_SUS_MNT_GROUP_ID from susfs_mnt_group_ida
++		res = ida_get_new_above(&susfs_mnt_group_ida,
++					susfs_mnt_group_start,
++					&mnt->mnt_group_id);
++		if (!res)
++			susfs_mnt_group_start = mnt->mnt_group_id + 1;
++		return res;
++	}
++#endif
+ retry:
+ 	ida_pre_get(&mnt_id_ida, GFP_KERNEL);
 @@ -121,4 +121,33 @@
  {
  	int id = mnt->mnt_id;
@@ -93,24 +134,6 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +#endif
  	spin_lock(&mnt_id_lock);
  	ida_remove(&mnt_id_ida, id);
-@@ -105,4 +105,17 @@
- 	int res;
- 
-+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	if (mnt->mnt_id >= DEFAULT_SUS_MNT_ID) {
-+		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
-+			return -ENOMEM;
-+		// If so, assign a sus mnt_group id DEFAULT_SUS_MNT_GROUP_ID from susfs_mnt_group_ida
-+		res = ida_get_new_above(&susfs_mnt_group_ida,
-+					susfs_mnt_group_start,
-+					&mnt->mnt_group_id);
-+		if (!res)
-+			susfs_mnt_group_start = mnt->mnt_group_id + 1;
-+		return res;
-+	}
-+#endif
- retry:
- 	ida_pre_get(&mnt_id_ida, GFP_KERNEL);
 @@ -155,4 +155,15 @@
  {
  	int id = mnt->mnt_group_id;
@@ -127,29 +150,32 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +#endif
  	ida_remove(&mnt_group_ida, id);
  	if (mnt_group_start > id)
-@@ -90,4 +90,22 @@
+@@ -544,4 +544,25 @@
+ 	unlock_mount_hash();
  }
- 
-+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+static struct mount *alloc_vfsmnt(const char *name, bool should_spoof, int custom_mnt_id)
-+#else
-+#endif
-+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+		if (should_spoof) {
-+			if (!custom_mnt_id) {
-+				err = susfs_mnt_alloc_id(mnt);
-+			} else {
-+				mnt->mnt_id = custom_mnt_id;
-+				err = 0;
-+			}
-+			goto bypass_orig_flow;
++#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT) || defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
++	// Check if bind mounted path should be hidden and umounted automatically.
++	// And we target only process with ksu domain.
++	if (susfs_is_current_ksu_domain()) {
++#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT)
++		if (susfs_is_auto_add_sus_bind_mount_enabled &&
++				susfs_auto_add_sus_bind_mount(old_name, &old_path)) {
++			goto orig_flow;
 +		}
 +#endif
-+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+bypass_orig_flow:
++#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
++		if (susfs_is_auto_add_try_umount_for_bind_mount_enabled) {
++			susfs_auto_add_try_umount_for_bind_mount(path);
++		}
 +#endif
- static inline struct hlist_head *mp_hash(struct dentry *dentry)
- {
++	}
++#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT)
++orig_flow:
++#endif
++#endif // #if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT) || defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
++
+ 
+ int sb_prepare_remount_readonly(struct super_block *sb)
 @@ -983,4 +983,14 @@
  		return ERR_PTR(-ENODEV);
  
@@ -172,6 +198,20 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	// If caller process is zygote, then it is a normal mount, so we just reorder the mnt_id
 +	if (susfs_is_current_zygote_domain()) {
++		mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
++		mnt->mnt_id = current->susfs_last_fake_mnt_id++;
++	}
++#endif
++
+ 	lock_mount_hash();
+ 	list_add_tail(&mnt->mnt_instance, &root->d_sb->s_mounts);
+@@ -1009,4 +1009,13 @@
+ 	mnt->mnt_mountpoint = mnt->mnt.mnt_root;
+ 	mnt->mnt_parent = mnt;
++
++#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
++	// If caller process is zygote and not doing unshare, so we just reorder the mnt_id
++	if (likely(is_current_zygote_domain) && !(flag & CL_ZYGOTE_COPY_MNT_NS)) {
 +		mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
 +		mnt->mnt_id = current->susfs_last_fake_mnt_id++;
 +	}
@@ -230,46 +270,6 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +#endif
  	mnt = alloc_vfsmnt(old->mnt_devname);
  	if (!mnt)
-@@ -1009,4 +1009,13 @@
- 	mnt->mnt_mountpoint = mnt->mnt.mnt_root;
- 	mnt->mnt_parent = mnt;
-+
-+#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
-+	// If caller process is zygote and not doing unshare, so we just reorder the mnt_id
-+	if (likely(is_current_zygote_domain) && !(flag & CL_ZYGOTE_COPY_MNT_NS)) {
-+		mnt->mnt.susfs_mnt_id_backup = mnt->mnt_id;
-+		mnt->mnt_id = current->susfs_last_fake_mnt_id++;
-+	}
-+#endif
-+
- 	lock_mount_hash();
- 	list_add_tail(&mnt->mnt_instance, &root->d_sb->s_mounts);
-@@ -544,4 +544,25 @@
- 	unlock_mount_hash();
- }
-+#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT) || defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
-+	// Check if bind mounted path should be hidden and umounted automatically.
-+	// And we target only process with ksu domain.
-+	if (susfs_is_current_ksu_domain()) {
-+#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT)
-+		if (susfs_is_auto_add_sus_bind_mount_enabled &&
-+				susfs_auto_add_sus_bind_mount(old_name, &old_path)) {
-+			goto orig_flow;
-+		}
-+#endif
-+#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
-+		if (susfs_is_auto_add_try_umount_for_bind_mount_enabled) {
-+			susfs_auto_add_try_umount_for_bind_mount(path);
-+		}
-+#endif
-+	}
-+#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT)
-+orig_flow:
-+#endif
-+#endif // #if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT) || defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
-+
- 
- int sb_prepare_remount_readonly(struct super_block *sb)
 @@ -2894,4 +2894,13 @@
  		retval = do_new_mount(&path, type_page, flags, mnt_flags,
  				      dev_name, data_page);

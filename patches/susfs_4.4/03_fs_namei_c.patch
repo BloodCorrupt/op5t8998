@@ -9,6 +9,29 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#endif
  
  #include "internal.h"
+@@ -154,4 +154,11 @@
+ 	}
+ 
++#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
++extern struct filename* susfs_get_redirected_path(unsigned long ino);
++#endif
++
++#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
++	struct filename *fake_pathname;
++#endif
+ 	/*
+ 	 * Uh-oh. We have a name that's approaching PATH_MAX. Allocate a
+@@ -187,4 +187,10 @@
+ 		}
+ 	}
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++	if (!IS_ERR(dentry) && dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
++		dput(dentry);
++		return ERR_PTR(-ENOENT);
++	}
++#endif
+ 
+ 	result->refcnt = 1;
 @@ -994,4 +994,10 @@
  	kuid_t puid;
  
@@ -53,17 +76,6 @@ diff --git a/fs/namei.c b/fs/namei.c
 +#endif
  	return dentry;
  }
-@@ -187,4 +187,10 @@
- 		}
- 	}
-+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+	if (!IS_ERR(dentry) && dentry->d_inode && unlikely(dentry->d_inode->i_state & INODE_STATE_SUS_PATH) && likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC)) {
-+		dput(dentry);
-+		return ERR_PTR(-ENOENT);
-+	}
-+#endif
- 
- 	result->refcnt = 1;
 @@ -2137,4 +2137,10 @@
  			return -ENOTDIR;
  		}
@@ -125,18 +137,6 @@ diff --git a/fs/namei.c b/fs/namei.c
 +
  	switch (inode->i_mode & S_IFMT) {
  	case S_IFLNK:
-@@ -154,4 +154,11 @@
- 	}
- 
-+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-+extern struct filename* susfs_get_redirected_path(unsigned long ino);
-+#endif
-+
-+#ifdef CONFIG_KSU_SUSFS_OPEN_REDIRECT
-+	struct filename *fake_pathname;
-+#endif
- 	/*
- 	 * Uh-oh. We have a name that's approaching PATH_MAX. Allocate a
 @@ -3539,4 +3539,23 @@
  	if (unlikely(filp == ERR_PTR(-ESTALE)))
  		filp = path_openat(&nd, op, flags | LOOKUP_REVAL);
