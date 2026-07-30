@@ -38,7 +38,7 @@ git reset --hard HEAD 2>/dev/null || true
 # The SuSFS patches add #include <linux/susfs_def.h> etc, but the
 # actual implementation files (susfs.c, sus_su.c, susfs_def.h, susfs.h)
 # live in the susfs4ksu repo and must be copied into the kernel tree.
-SUSFS_REPO="https://github.com/nicholaschiasson/susfs4ksu"
+SUSFS_REPO="https://gitlab.com/simonpunk/susfs4ksu.git"
 SUSFS_BRANCH="kernel-4.9"
 SUSFS_DIR="${BUILDER_ROOT}/susfs4ksu"
 
