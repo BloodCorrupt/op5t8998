@@ -523,10 +523,8 @@ fi
 # --- fs/open.c: ksu_handle_faccessat ---
 if ! grep -q "ksu_handle_faccessat" "fs/open.c" 2>/dev/null; then
     substep "  Adding ksu_handle_faccessat to fs/open.c..."
-    sed -i '/^long do_faccessat(/{
-        i\
-extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode, int *flags);
-    }' "fs/open.c"
+    sed -i '/^SYSCALL_DEFINE3(faccessat,/i\
+extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode, int *flags);' "fs/open.c"
     success "  fs/open.c: ksu_handle_faccessat added"
 fi
 
