@@ -1,7 +1,7 @@
 diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
 --- a/kernel/kallsyms.c
 +++ b/kernel/kallsyms.c
-@@ -547,3 +547,14 @@
+@@ -547,4 +547,14 @@
  	} else
 +#ifndef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
  		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
