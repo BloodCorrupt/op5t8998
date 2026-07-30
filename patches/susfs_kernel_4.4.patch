@@ -617,10 +617,10 @@ diff --git a/fs/notify/fdinfo.c b/fs/notify/fdinfo.c
 +#endif
  static void inotify_fdinfo(struct seq_file *m, struct fsnotify_mark *mark)
  {
-@@ -84,5 +84,36 @@
- 	inode = igrab(mark->inode);
- 	if (inode) {
--		u32 mask = mark->mask & IN_ALL_EVENTS;
+@@ -93,5 +93,36 @@
+ 		seq_printf(m, "inotify wd:%x ino:%lx sdev:%x mask:%x ignored_mask:%x ",
+ 			   inode_mark->wd, inode->i_ino, inode->i_sb->s_dev,
+-			   mask, mark->ignored_mask);
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +		u32 mask = mark->mask & IN_ALL_EVENTS;
 +		if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
@@ -653,8 +653,8 @@ diff --git a/fs/notify/fdinfo.c b/fs/notify/fdinfo.c
 +out_seq_printf:
 +#endif
 +		//u32 mask = mark->mask & IN_ALL_EVENTS;
- 		 * IN_ALL_EVENTS represents all of the mask bits
- 		 * that we expose to userspace.  There is at
+ 		show_mark_fhandle(m, inode);
+ 		seq_putc(m, '\n');
 
 diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
 --- a/fs/overlayfs/inode.c
