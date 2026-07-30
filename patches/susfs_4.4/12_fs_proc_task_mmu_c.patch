@@ -1,18 +1,18 @@
 diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 --- a/fs/proc/task_mmu.c
 +++ b/fs/proc/task_mmu.c
-@@ -76,4 +76,8 @@
- }
- 
+@@ -74,4 +74,8 @@
+ 		swap << (PAGE_SHIFT-10));
+ 	hugetlb_report_usage(m, mm);
 +#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 +extern void susfs_sus_ino_for_show_map_vma(unsigned long ino, dev_t *out_dev, unsigned long *out_ino);
 +#endif
 +
- unsigned long task_vsize(struct mm_struct *mm)
- {
-@@ -350,4 +350,13 @@
- 	if (file) {
- 		struct inode *inode = file_inode(vma->vm_file);
+ }
+ 
+@@ -348,4 +352,13 @@
+ 	const char *name = NULL;
+ 
 +#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 +		if (unlikely(inode->i_state & INODE_STATE_SUS_KSTAT)) {
 +			susfs_sus_ino_for_show_map_vma(inode->i_ino, &dev, &ino);
@@ -22,6 +22,5 @@ diff --git a/fs/proc/task_mmu.c b/fs/proc/task_mmu.c
 +#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 +bypass_orig_flow:
 +#endif
- 		dev = inode->i_sb->s_dev;
- 		ino = inode->i_ino;
-
+ 	if (file) {
+ 		struct inode *inode = file_inode(vma->vm_file);

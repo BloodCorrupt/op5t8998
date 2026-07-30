@@ -1,9 +1,9 @@
 diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
 --- a/fs/overlayfs/super.c
 +++ b/fs/overlayfs/super.c
-@@ -72,4 +72,18 @@
- }
- 
+@@ -70,4 +70,18 @@
+ {
+ 	return oe->numlower ? oe->lowerstack[0].dentry : NULL;
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +void ovl_path_lowerdata(struct dentry *dentry, struct path *path)
 +{
@@ -18,11 +18,11 @@ diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
 +}
 +#endif
 +
- enum ovl_path_type ovl_path_type(struct dentry *dentry)
- {
-@@ -465,4 +465,16 @@
- 	int err;
+ }
  
+@@ -463,4 +477,16 @@
+ 	struct dentry *this, *prev = NULL;
+ 	unsigned int i;
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +	ovl_path_lowerdata(root_dentry, &path);
 +	if (likely(path.mnt && path.dentry)) {
@@ -35,6 +35,5 @@ diff --git a/fs/overlayfs/super.c b/fs/overlayfs/super.c
 +	}
 +#endif
 +
- 	upperdir = ovl_upperdentry_dereference(poe);
- 	if (upperdir) {
-
+ 	int err;
+ 

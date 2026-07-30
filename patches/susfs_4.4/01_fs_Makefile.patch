@@ -1,11 +1,10 @@
 diff --git a/fs/Makefile b/fs/Makefile
 --- a/fs/Makefile
 +++ b/fs/Makefile
-@@ -14,4 +14,6 @@
- 		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o
- 
+@@ -12,4 +12,6 @@
+ 		seq_file.o xattr.o libfs.o fs-writeback.o \
+ 		pnode.o splice.o sync.o utimes.o \
 +obj-$(CONFIG_KSU_SUSFS) += susfs.o
 +
- ifeq ($(CONFIG_BLOCK),y)
- obj-y +=	buffer.o block_dev.o direct-io.o mpage.o
-
+ 		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o
+ 

@@ -1,9 +1,9 @@
 diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
 --- a/fs/overlayfs/inode.c
 +++ b/fs/overlayfs/inode.c
-@@ -96,4 +96,14 @@
- 	int err;
- 
+@@ -15,4 +15,14 @@
+ static int ovl_copy_up_truncate(struct dentry *dentry)
+ {
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +	ovl_path_lowerdata(dentry, &realpath);
 +	if (likely(realpath.mnt && realpath.dentry)) {
@@ -14,6 +14,5 @@ diff --git a/fs/overlayfs/inode.c b/fs/overlayfs/inode.c
 +	}
 +#endif
 +
- 	if (S_ISDIR(inode->i_mode)) {
- 		oe = inode->i_private;
-
+ 	int err;
+ 	struct dentry *parent;

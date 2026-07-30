@@ -1,17 +1,14 @@
 diff --git a/kernel/sys.c b/kernel/sys.c
 --- a/kernel/sys.c
 +++ b/kernel/sys.c
-@@ -1145,6 +1145,16 @@
- SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
- {
- 	struct new_utsname tmp;
+@@ -1143,4 +1143,10 @@
+ }
  
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 +extern void susfs_spoof_uname(struct new_utsname* tmp);
 +#endif
- 	down_read(&uts_sem);
- 	memcpy(&tmp, utsname(), sizeof(tmp));
 +#ifdef CONFIG_KSU_SUSFS_SPOOF_UNAME
 +	susfs_spoof_uname(&tmp);
 +#endif
- 	up_read(&uts_sem);
+ SYSCALL_DEFINE1(newuname, struct new_utsname __user *, name)
+ {

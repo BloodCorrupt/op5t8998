@@ -1,9 +1,9 @@
 diff --git a/fs/namespace.c b/fs/namespace.c
 --- a/fs/namespace.c
 +++ b/fs/namespace.c
-@@ -25,4 +25,33 @@
- #include <linux/bootmem.h>
- #include <linux/task_work.h>
+@@ -23,4 +23,33 @@
+ #include <linux/proc_ns.h>
+ #include <linux/magic.h>
 +#if defined(CONFIG_KSU_SUSFS_SUS_MOUNT) || defined(CONFIG_KSU_SUSFS_TRY_UMOUNT)
 +#include <linux/susfs_def.h>
 +#endif
@@ -33,11 +33,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +bool susfs_is_auto_add_try_umount_for_bind_mount_enabled = true;
 +#endif
 +
- #include "pnode.h"
- #include "internal.h"
-@@ -90,4 +90,23 @@
- }
- 
+ #include <linux/bootmem.h>
+ #include <linux/task_work.h>
+@@ -43,4 +72,23 @@
+ 	mhash_entries = simple_strtoul(str, &str, 0);
+ 	return 1;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +// Our own mnt_alloc_id() that assigns mnt_id starting from DEFAULT_SUS_MNT_ID
 +static int susfs_mnt_alloc_id(struct mount *mnt)
@@ -57,11 +57,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +	return res;
 +}
 +#endif
- static inline struct hlist_head *mp_hash(struct dentry *dentry)
- {
-@@ -90,4 +90,22 @@
  }
- 
+ __setup("mhash_entries=", set_mhash_entries);
+@@ -43,4 +91,22 @@
+ 	mhash_entries = simple_strtoul(str, &str, 0);
+ 	return 1;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +static struct mount *alloc_vfsmnt(const char *name, bool should_spoof, int custom_mnt_id)
 +#else
@@ -80,11 +80,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +bypass_orig_flow:
 +#endif
- static inline struct hlist_head *mp_hash(struct dentry *dentry)
+ }
+ __setup("mhash_entries=", set_mhash_entries);
+@@ -103,4 +169,17 @@
+ static int mnt_alloc_id(struct mount *mnt)
  {
-@@ -105,4 +105,17 @@
- 	int res;
- 
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (mnt->mnt_id >= DEFAULT_SUS_MNT_ID) {
 +		if (!ida_pre_get(&susfs_mnt_group_ida, GFP_KERNEL))
@@ -98,11 +98,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +		return res;
 +	}
 +#endif
- retry:
- 	ida_pre_get(&mnt_id_ida, GFP_KERNEL);
-@@ -121,4 +121,33 @@
- {
- 	int id = mnt->mnt_id;
+ 	int res;
+ 
+@@ -119,4 +198,33 @@
+ 
+ static void mnt_free_id(struct mount *mnt)
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	int mnt_id_backup = mnt->mnt.susfs_mnt_id_backup;
 +	// We should first check the 'mnt->mnt.susfs_mnt_id_backup', see if it is DEFAULT_SUS_MNT_ID_FOR_KSU_PROC_UNSHARE
@@ -132,11 +132,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +		return;
 +	}
 +#endif
- 	spin_lock(&mnt_id_lock);
- 	ida_remove(&mnt_id_ida, id);
-@@ -155,4 +155,15 @@
  {
- 	int id = mnt->mnt_group_id;
+ 	int id = mnt->mnt_id;
+@@ -153,4 +261,15 @@
+  */
+ void mnt_release_group_id(struct mount *mnt)
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	// If mnt->mnt_group_id >= DEFAULT_SUS_MNT_GROUP_ID, it means 'mnt' is also sus mount,
 +	// then we free the mnt->mnt_group_id from susfs_mnt_group_ida
@@ -148,11 +148,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +		return;
 +	}
 +#endif
- 	ida_remove(&mnt_group_ida, id);
- 	if (mnt_group_start > id)
-@@ -544,4 +544,25 @@
- 	unlock_mount_hash();
- }
+ {
+ 	int id = mnt->mnt_group_id;
+@@ -542,4 +661,25 @@
+ 	lock_mount_hash();
+ 	mnt->mnt.mnt_flags &= ~MNT_READONLY;
 +#if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT) || defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
 +	// Check if bind mounted path should be hidden and umounted automatically.
 +	// And we target only process with ksu domain.
@@ -174,11 +174,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +#endif
 +#endif // #if defined(CONFIG_KSU_SUSFS_AUTO_ADD_SUS_BIND_MOUNT) || defined(CONFIG_KSU_SUSFS_AUTO_ADD_TRY_UMOUNT_FOR_BIND_MOUNT)
 +
+ 	unlock_mount_hash();
+ }
+@@ -981,4 +1121,14 @@
  
- int sb_prepare_remount_readonly(struct super_block *sb)
-@@ -983,4 +983,14 @@
- 		return ERR_PTR(-ENODEV);
- 
+ 	if (!type)
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	// For newly created mounts, the only caller process we care is KSU
 +	if (unlikely(susfs_is_current_ksu_domain())) {
@@ -189,11 +189,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +bypass_orig_flow:
 +#else
 +#endif
- 	mnt = alloc_vfsmnt(name);
- 	if (!mnt)
-@@ -1009,4 +1009,13 @@
- 	mnt->mnt_mountpoint = mnt->mnt.mnt_root;
- 	mnt->mnt_parent = mnt;
+ 		return ERR_PTR(-ENODEV);
+ 
+@@ -1007,4 +1157,13 @@
+ 	mnt->mnt.mnt_root = root;
+ 	mnt->mnt.mnt_sb = root->d_sb;
 +
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	// If caller process is zygote, then it is a normal mount, so we just reorder the mnt_id
@@ -203,11 +203,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +	}
 +#endif
 +
- 	lock_mount_hash();
- 	list_add_tail(&mnt->mnt_instance, &root->d_sb->s_mounts);
-@@ -1009,4 +1009,13 @@
  	mnt->mnt_mountpoint = mnt->mnt.mnt_root;
  	mnt->mnt_parent = mnt;
+@@ -1007,4 +1166,13 @@
+ 	mnt->mnt.mnt_root = root;
+ 	mnt->mnt.mnt_sb = root->d_sb;
 +
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	// If caller process is zygote and not doing unshare, so we just reorder the mnt_id
@@ -217,12 +217,12 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +	}
 +#endif
 +
- 	lock_mount_hash();
- 	list_add_tail(&mnt->mnt_instance, &root->d_sb->s_mounts);
-@@ -1037,5 +1037,49 @@
- 	struct mount *mnt;
- 	int err;
--
+ 	mnt->mnt_mountpoint = mnt->mnt.mnt_root;
+ 	mnt->mnt_parent = mnt;
+@@ -1035,5 +1203,49 @@
+ {
+ 	struct super_block *sb = old->mnt.mnt_sb;
+-	struct mount *mnt;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	bool is_current_ksu_domain = susfs_is_current_ksu_domain();
 +	bool is_current_zygote_domain = susfs_is_current_zygote_domain();
@@ -268,11 +268,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +bypass_orig_flow:
 +#else
 +#endif
- 	mnt = alloc_vfsmnt(old->mnt_devname);
- 	if (!mnt)
-@@ -2894,4 +2894,13 @@
- 		retval = do_new_mount(&path, type_page, flags, mnt_flags,
- 				      dev_name, data_page);
+ 	int err;
+ 
+@@ -2892,4 +3104,13 @@
+ 		retval = do_move_mount(&path, dev_name);
+ 	else
 +#ifdef CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT
 +	// For both Legacy and Magic Mount KernelSU
 +	if (!retval && susfs_is_auto_add_sus_ksu_default_mount_enabled &&
@@ -282,20 +282,20 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +		}
 +	}
 +#endif
- dput_out:
- 	path_put(&path);
-@@ -2950,4 +2950,8 @@
- 	struct mount *new;
- 	int copy_flags;
+ 		retval = do_new_mount(&path, type_page, flags, mnt_flags,
+ 				      dev_name, data_page);
+@@ -2948,4 +3169,8 @@
+ 	struct mount *p, *q;
+ 	struct mount *old;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	bool is_zygote_pid = susfs_is_current_zygote_domain();
 +	int last_entry_mnt_id = 0;
 +#endif
- 
- 	BUG_ON(!ns);
-@@ -2969,4 +2969,12 @@
- 	if (user_ns != ns->user_ns)
- 		copy_flags |= CL_SHARED_TO_SLAVE | CL_UNPRIVILEGED;
+ 	struct mount *new;
+ 	int copy_flags;
+@@ -2967,4 +3192,12 @@
+ 	/* First pass: copy the tree topology */
+ 	copy_flags = CL_COPY_UNBINDABLE | CL_EXPIRE;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	// Always let clone_mnt() in copy_tree() know it is from copy_mnt_ns()
 +	copy_flags |= CL_COPY_MNT_NS;
@@ -304,11 +304,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +		copy_flags |= CL_ZYGOTE_COPY_MNT_NS;
 +	}
 +#endif
- 	new = copy_tree(old, old->mnt.mnt_root, copy_flags);
- 	if (IS_ERR(new)) {
-@@ -3005,4 +3005,27 @@
- 			p = next_mnt(p, old);
- 	}
+ 	if (user_ns != ns->user_ns)
+ 		copy_flags |= CL_SHARED_TO_SLAVE | CL_UNPRIVILEGED;
+@@ -3003,4 +3236,27 @@
+ 			break;
+ 		while (p->mnt.mnt_root != q->mnt.mnt_root)
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	// current->susfs_last_fake_mnt_id -> to record last valid fake mnt_id to zygote pid
 +	// q->mnt.susfs_mnt_id_backup -> original mnt_id
@@ -332,11 +332,11 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +	current->susfs_last_fake_mnt_id = last_entry_mnt_id;
 +#endif
 +
- 	namespace_unlock();
- 
-@@ -3528,3 +3528,37 @@
- 	.owner		= mntns_owner,
- };
+ 			p = next_mnt(p, old);
+ 	}
+@@ -3526,4 +3782,38 @@
+ 	.put		= mntns_put,
+ 	.install	= mntns_install,
 +
 +#ifdef CONFIG_KSU_SUSFS_TRY_UMOUNT
 +extern void susfs_try_umount_all(uid_t uid);
@@ -371,5 +371,5 @@ diff --git a/fs/namespace.c b/fs/namespace.c
 +	return false;
 +}
 +#endif
- 
-
+ 	.owner		= mntns_owner,
+ };

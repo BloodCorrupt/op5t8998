@@ -1,18 +1,18 @@
 diff --git a/fs/statfs.c b/fs/statfs.c
 --- a/fs/statfs.c
 +++ b/fs/statfs.c
-@@ -8,4 +8,8 @@
- #include <linux/security.h>
- #include <linux/uaccess.h>
+@@ -6,4 +6,8 @@
+ #include <linux/namei.h>
+ #include <linux/statfs.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +#include <linux/susfs_def.h>
 +#include "mount.h"
 +#endif
- #include "internal.h"
+ #include <linux/security.h>
+ #include <linux/uaccess.h>
+@@ -65,4 +69,16 @@
  
-@@ -67,4 +67,16 @@
- {
- 	int error;
+ int vfs_statfs(struct path *path, struct kstatfs *buf)
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	struct mount *mnt;
 +	mnt = real_mount(path->mnt);
@@ -25,11 +25,11 @@ diff --git a/fs/statfs.c b/fs/statfs.c
 +	return error;
 +#else
 +#endif
- 
- 	error = statfs_by_dentry(path->dentry, buf);
-@@ -90,4 +90,20 @@
- 		}
- 	}
+ {
+ 	int error;
+@@ -88,4 +104,20 @@
+ 			lookup_flags |= LOOKUP_REVAL;
+ 			goto retry;
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +	/* - When mounting overlay, the f_flags are set with 'ro' and 'relatime',
 +	 *   but this is an abnormal status, as when we inspect the output from mountinfo,
@@ -46,27 +46,26 @@ diff --git a/fs/statfs.c b/fs/statfs.c
 +		st->f_flags |= ST_NOATIME;
 +	}
 +#endif
- 	return error;
- }
-@@ -101,4 +101,10 @@
- 		fdput(f);
+ 		}
  	}
+@@ -99,4 +131,10 @@
+ 	if (f.file) {
+ 		error = vfs_statfs(&f.file->f_path, st);
 +#ifdef CONFIG_KSU_SUSFS_SUS_OVERLAYFS
 +	if (unlikely((st->f_flags & ST_RDONLY) && (st->f_flags & ST_RELATIME))) {
 +		st->f_flags &= ~ST_RELATIME;
 +		st->f_flags |= ST_NOATIME;
 +	}
 +#endif
- 	return error;
- }
-@@ -208,4 +208,9 @@
- 		return -EINVAL;
- 
+ 		fdput(f);
+ 	}
+@@ -184,4 +222,9 @@
+ 	int error;
+ 	if (sz != sizeof(*buf))
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (unlikely(s->s_root->d_inode->i_state & INODE_STATE_SUS_MOUNT)) {
 +		return -EINVAL;
 +	}
 +#endif
- 	error = fd_statfs(fd, &st);
- 	if (!error)
-
+ 		return -EINVAL;
+ 	error = user_statfs(pathname, &st);

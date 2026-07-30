@@ -1,32 +1,31 @@
 diff --git a/fs/proc_namespace.c b/fs/proc_namespace.c
 --- a/fs/proc_namespace.c
 +++ b/fs/proc_namespace.c
-@@ -12,4 +12,7 @@
- #include <linux/fs_struct.h>
- #include "proc/internal.h" /* only for get_proc_task() in ->open() */
+@@ -10,4 +10,7 @@
+ #include <linux/nsproxy.h>
+ #include <linux/security.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +#include <linux/susfs_def.h>
 +#endif
- 
- #include "pnode.h"
-@@ -134,4 +134,9 @@
- 	struct super_block *sb = mnt->mnt_sb;
- 	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
+ #include <linux/fs_struct.h>
+ #include "proc/internal.h" /* only for get_proc_task() in ->open() */
+@@ -97,4 +100,9 @@
+ 	struct mount *r = real_mount(mnt);
+ 	int err = 0;
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID))
 +		return 0;
 +#endif
 +
- 	int err = 0;
- 
-@@ -196,4 +196,9 @@
  	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };
  	struct super_block *sb = mnt_path.dentry->d_sb;
+@@ -132,4 +140,9 @@
+ 	struct proc_mounts *p = m->private;
+ 	struct mount *r = real_mount(mnt);
 +#ifdef CONFIG_KSU_SUSFS_SUS_MOUNT
 +	if (unlikely(r->mnt_id >= DEFAULT_SUS_MNT_ID))
 +		return 0;
 +#endif
 +
- 	int err = 0;
- 
-
+ 	struct super_block *sb = mnt->mnt_sb;
+ 	struct path mnt_path = { .dentry = mnt->mnt_root, .mnt = mnt };

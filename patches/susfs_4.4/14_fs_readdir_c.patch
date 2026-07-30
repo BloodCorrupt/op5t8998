@@ -1,9 +1,9 @@
 diff --git a/fs/readdir.c b/fs/readdir.c
 --- a/fs/readdir.c
 +++ b/fs/readdir.c
-@@ -19,4 +19,11 @@
- #include <linux/syscalls.h>
- #include <linux/unistd.h>
+@@ -17,4 +17,11 @@
+ #include <linux/dirent.h>
+ #include <linux/security.h>
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +#include <linux/susfs_def.h>
 +#endif
@@ -11,26 +11,25 @@ diff --git a/fs/readdir.c b/fs/readdir.c
 +extern int susfs_sus_ino_for_filldir64(unsigned long ino);
 +#endif
 +
- 
- #include <asm/uaccess.h>
-@@ -194,4 +194,9 @@
+ #include <linux/syscalls.h>
+ #include <linux/unistd.h>
+@@ -192,4 +199,9 @@
+ 	unsigned long d_ino;
+ 	int reclen = ALIGN(offsetof(struct linux_dirent, d_name) + namlen + 2,
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) && susfs_sus_ino_for_filldir64(ino)) {
++		return 0;
++	}
++#endif
  		sizeof(long));
  
+@@ -279,4 +291,9 @@
+ 		container_of(ctx, struct getdents_callback64, ctx);
+ 	int reclen = ALIGN(offsetof(struct linux_dirent64, d_name) + namlen + 1,
 +#ifdef CONFIG_KSU_SUSFS_SUS_PATH
 +	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) && susfs_sus_ino_for_filldir64(ino)) {
 +		return 0;
 +	}
 +#endif
- 	buf->error = verify_dirent_name(name, namlen);
- 	if (unlikely(buf->error))
-@@ -281,4 +281,9 @@
  		sizeof(u64));
  
-+#ifdef CONFIG_KSU_SUSFS_SUS_PATH
-+	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) && susfs_sus_ino_for_filldir64(ino)) {
-+		return 0;
-+	}
-+#endif
- 	buf->error = verify_dirent_name(name, namlen);
- 	if (unlikely(buf->error))
-

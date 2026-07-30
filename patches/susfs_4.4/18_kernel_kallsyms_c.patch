@@ -1,9 +1,9 @@
 diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
 --- a/kernel/kallsyms.c
 +++ b/kernel/kallsyms.c
-@@ -546,4 +546,15 @@
- 			   type, iter->name, iter->module_name);
- 	} else
+@@ -544,4 +544,15 @@
+ 					tolower(iter->type);
+ 		seq_printf(m, "%pK %c %s\t[%s]\n", (void *)iter->value,
 +
 +#ifndef CONFIG_KSU_SUSFS_HIDE_KSU_SUSFS_SYMBOLS
 +#else
@@ -15,6 +15,5 @@ diff --git a/kernel/kallsyms.c b/kernel/kallsyms.c
 +			   iter->type, iter->name);
 +	}
 +#endif
- 		seq_printf(m, "%pK %c %s\n", (void *)iter->value,
- 			   iter->type, iter->name);
-
+ 			   type, iter->name, iter->module_name);
+ 	} else
