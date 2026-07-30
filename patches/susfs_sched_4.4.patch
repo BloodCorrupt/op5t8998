@@ -1,12 +1,11 @@
 diff --git a/include/linux/sched.h b/include/linux/sched.h
 --- a/include/linux/sched.h
 +++ b/include/linux/sched.h
-@@ -2137,4 +2137,8 @@
- 	struct thread_struct thread;
- /*
+@@ -2135,3 +2135,7 @@
+ 	int pagefault_disabled;
 +#ifdef CONFIG_KSU_SUSFS
 +	u64 susfs_task_state;
 +	u64 susfs_last_fake_mnt_id;
 +#endif
-  * WARNING: on x86, 'thread_struct' contains a variable-sized
-  * structure.  It *MUST* be at the end of 'task_struct'.
+ /* CPU-specific state of this task */
+ 	struct thread_struct thread;
