@@ -1,9 +1,7 @@
 diff --git a/fs/Makefile b/fs/Makefile
 --- a/fs/Makefile
 +++ b/fs/Makefile
-@@ -13,3 +13,5 @@
- 		pnode.o splice.o sync.o utimes.o \
- 		stack.o fs_struct.o statfs.o fs_pin.o nsfs.o
-+obj-$(CONFIG_KSU_SUSFS) += susfs.o
+@@ -130,2 +130,4 @@
+ obj-$(CONFIG_EFIVAR_FS)		+= efivarfs/
 +
- 
++obj-$(CONFIG_KSU_SUSFS) += susfs.o
