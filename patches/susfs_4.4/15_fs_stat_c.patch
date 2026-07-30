@@ -1,17 +1,19 @@
 diff --git a/fs/stat.c b/fs/stat.c
 --- a/fs/stat.c
 +++ b/fs/stat.c
-@@ -13,4 +13,7 @@
- #include <linux/namei.h>
- #include <linux/security.h>
+@@ -16,3 +16,9 @@
+ #include <linux/pagemap.h>
+ 
 +#if defined(CONFIG_KSU_SUSFS_SUS_KSTAT) || defined(CONFIG_KSU_SUSFS_SUS_MOUNT)
 +#include <linux/susfs_def.h>
 +#endif
- #include <linux/syscalls.h>
- #include <linux/pagemap.h>
-@@ -19,4 +22,15 @@
- #include <asm/unistd.h>
- 
++#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
++extern void susfs_sus_ino_for_generic_fillattr(unsigned long ino, struct kstat *stat);
++#endif
+ #include <asm/uaccess.h>
+@@ -21,3 +27,14 @@
+ void generic_fillattr(struct inode *inode, struct kstat *stat)
+ {
 +#ifdef CONFIG_KSU_SUSFS_SUS_KSTAT
 +	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) &&
 +			unlikely(inode->i_state & INODE_STATE_SUS_KSTAT)) {
@@ -23,5 +25,4 @@ diff --git a/fs/stat.c b/fs/stat.c
 +		return;
 +	}
 +#endif
- void generic_fillattr(struct inode *inode, struct kstat *stat)
- {
+ 	stat->dev = inode->i_sb->s_dev;
