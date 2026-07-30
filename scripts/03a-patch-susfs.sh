@@ -154,13 +154,10 @@ apply_patch() {
 info "Phase 1: Applying SuSFS base kernel patches..."
 separator
 
-SUSFS_PATCHES=(
-    "susfs_kernel_4.4.patch"
-    "susfs_sched_4.4.patch"
-)
-
-for pf in "${SUSFS_PATCHES[@]}"; do
-    apply_patch "${PATCHES_PATH}/${pf}" || true
+for pf in "${PATCHES_PATH}/susfs_4.4"/*.patch "${PATCHES_PATH}/susfs_sched_4.4.patch"; do
+    if [ -f "$pf" ]; then
+        apply_patch "$pf" || true
+    fi
 done
 
 # ============================================================

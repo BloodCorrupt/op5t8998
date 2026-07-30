@@ -1,0 +1,12 @@
+diff --git a/include/linux/mount.h b/include/linux/mount.h
+--- a/include/linux/mount.h
++++ b/include/linux/mount.h
+@@ -69,4 +69,7 @@
+ 	int mnt_flags;
+ 	void *data;
++#ifdef CONFIG_KSU_SUSFS
++	u64 susfs_mnt_id_backup;
++#endif
+ };
+ 
+

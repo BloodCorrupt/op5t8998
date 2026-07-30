@@ -1,0 +1,36 @@
+diff --git a/fs/readdir.c b/fs/readdir.c
+--- a/fs/readdir.c
++++ b/fs/readdir.c
+@@ -19,4 +19,11 @@
+ #include <linux/syscalls.h>
+ #include <linux/unistd.h>
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++#include <linux/susfs_def.h>
++#endif
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++extern int susfs_sus_ino_for_filldir64(unsigned long ino);
++#endif
++
+ 
+ #include <asm/uaccess.h>
+@@ -194,4 +194,9 @@
+ 		sizeof(long));
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) && susfs_sus_ino_for_filldir64(ino)) {
++		return 0;
++	}
++#endif
+ 	buf->error = verify_dirent_name(name, namlen);
+ 	if (unlikely(buf->error))
+@@ -281,4 +281,9 @@
+ 		sizeof(u64));
+ 
++#ifdef CONFIG_KSU_SUSFS_SUS_PATH
++	if (likely(current->susfs_task_state & TASK_STRUCT_NON_ROOT_USER_APP_PROC) && susfs_sus_ino_for_filldir64(ino)) {
++		return 0;
++	}
++#endif
+ 	buf->error = verify_dirent_name(name, namlen);
+ 	if (unlikely(buf->error))
+
