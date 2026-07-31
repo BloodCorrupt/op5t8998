@@ -184,8 +184,11 @@ if ! grep -q "$SUSFS_COMPAT_MARKER" "$SUSFS_C" 2>/dev/null; then
 #include <linux/uaccess.h>
 #include <linux/sched.h>
 
-/* susfs_extra_works: scheduled work used by kernel_umount.c */
-struct work_struct susfs_extra_works;
+/* susfs_extra_works: MUST be properly initialized with DECLARE_WORK,
+ * otherwise schedule_work() will dereference a NULL function pointer
+ * and cause an instant kernel panic (bootloop). */
+static void susfs_extra_works_fn(struct work_struct *work) { /* no-op */ }
+DECLARE_WORK(susfs_extra_works, susfs_extra_works_fn);
 EXPORT_SYMBOL(susfs_extra_works);
 
 /* Per-task umount tracking (used by sucompat.c and kernel_umount.c) */

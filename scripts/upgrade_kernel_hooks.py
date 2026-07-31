@@ -212,7 +212,7 @@ if 'ksu_handle_sys_reboot' not in content:
     old_syscall = 'SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,\n\t\tvoid __user *, arg)\n{'
     new_syscall = (
         '#ifdef CONFIG_KSU\n'
-        'int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user *arg);\n'
+        'int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user **arg);\n'
         '#endif\n'
         'SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,\n'
         '\t\tvoid __user *, arg)\n'
@@ -229,7 +229,7 @@ if 'ksu_handle_sys_reboot' not in content:
             '\t\treturn -EINVAL;\n'
             '\n'
             '#ifdef CONFIG_KSU\n'
-            '\tksu_handle_sys_reboot(magic1, magic2, cmd, arg);\n'
+            '\tksu_handle_sys_reboot(magic1, magic2, cmd, &arg);\n'
             '#endif\n'
             '\n'
             '\t/*\n\t * If pid namespaces'
