@@ -165,6 +165,77 @@ done
 
 success "SuSFS source files copied."
 
+# ════════════════════════════════════════
+# Phase 0.5: Append missing SuSFS stubs for ReSukiSU compat
+# ════════════════════════════════════════
+# ReSukiSU expects functions from SuSFS >= 1.5.x
+# but susfs4ksu kernel-4.14 is based on ~1.4.x.
+# We append real stub definitions to susfs.c so the linker
+# can resolve them from sucompat.c, kernel_umount.c, dispatch.c.
+SUSFS_C="${KERNEL_PATH}/fs/susfs.c"
+SUSFS_COMPAT_MARKER="/* ReSukiSU compat stubs: missing in SuSFS 1.4.x */"
+
+if ! grep -q "$SUSFS_COMPAT_MARKER" "$SUSFS_C" 2>/dev/null; then
+    substep "Appending ReSukiSU compat stubs to fs/susfs.c..."
+    cat >> "$SUSFS_C" << 'SUSFS_STUBS_EOF'
+
+/* ReSukiSU compat stubs: missing in SuSFS 1.4.x */
+#include <linux/workqueue.h>
+#include <linux/uaccess.h>
+#include <linux/sched.h>
+
+/* susfs_extra_works: scheduled work used by kernel_umount.c */
+struct work_struct susfs_extra_works;
+EXPORT_SYMBOL(susfs_extra_works);
+
+/* Per-task umount tracking (used by sucompat.c and kernel_umount.c) */
+bool susfs_is_current_proc_umounted(void)
+{
+    return false;
+}
+EXPORT_SYMBOL(susfs_is_current_proc_umounted);
+
+void susfs_set_current_proc_umounted(void)
+{
+    /* no-op: feature not in SuSFS 1.4.x */
+}
+EXPORT_SYMBOL(susfs_set_current_proc_umounted);
+
+/* Log and info commands (used by dispatch.c) */
+void susfs_enable_log(void __user **user_info)
+{
+    /* no-op */
+}
+EXPORT_SYMBOL(susfs_enable_log);
+
+void susfs_show_version(void __user **user_info)
+{
+    /* no-op */
+}
+EXPORT_SYMBOL(susfs_show_version);
+
+void susfs_get_enabled_features(void __user **user_info)
+{
+    /* no-op */
+}
+EXPORT_SYMBOL(susfs_get_enabled_features);
+
+void susfs_show_variant(void __user **user_info)
+{
+    /* no-op */
+}
+EXPORT_SYMBOL(susfs_show_variant);
+
+void susfs_start_sdcard_monitor_fn(void)
+{
+    /* no-op */
+}
+EXPORT_SYMBOL(susfs_start_sdcard_monitor_fn);
+SUSFS_STUBS_EOF
+    success "ReSukiSU compat stubs appended to fs/susfs.c"
+else
+    warn "ReSukiSU compat stubs already present in fs/susfs.c (skipping)"
+fi
 
 
 # ════════════════════════════════════════
