@@ -14,7 +14,11 @@ timer_start
 # --- Clone Kernel Source ---
 if [ -d "$KERNEL_PATH" ] && [ -f "$KERNEL_PATH/Makefile" ]; then
     warn "Kernel source already exists at ${KERNEL_PATH}"
-    info "Skipping clone. Delete the directory to re-clone."
+    substep "Cleaning kernel tree to ensure a pristine state..."
+    cd "$KERNEL_PATH"
+    git reset --hard HEAD > /dev/null
+    git clean -fd > /dev/null
+    cd - > /dev/null
 else
     substep "Cloning kernel source (shallow)..."
     info "Repo: ${KERNEL_REPO}"
