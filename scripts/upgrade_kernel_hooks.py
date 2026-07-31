@@ -37,7 +37,6 @@ if 'ksu_handle_sys_read' not in content:
     print("[read_write.c] Upgrading...")
 
     # Step 1: Remove the old vfs_read hook block (declaration + call together)
-    # Old declaration before vfs_read:
     old_decl_block = re.compile(
         r'\n#ifdef CONFIG_KSU\nextern bool ksu_vfs_read_hook __read_mostly;\nint ksu_handle_vfs_read\(struct file \*\*file_ptr, char __user \*\*buf_ptr,\n\t\t\tsize_t \*count_ptr, loff_t \*\*pos\);\n#endif\n',
         re.MULTILINE
@@ -46,7 +45,6 @@ if 'ksu_handle_sys_read' not in content:
     if n:
         print("  [OK] Removed old ksu_handle_vfs_read declaration")
     else:
-        # Looser removal
         content = re.sub(
             r'#ifdef CONFIG_KSU\s*\nextern bool ksu_vfs_read_hook[^\n]+\nint ksu_handle_vfs_read[^\n]+\n[^\n]+;\n#endif\s*\n',
             '',
@@ -63,7 +61,6 @@ if 'ksu_handle_sys_read' not in content:
     print("  [OK] Removed old ksu_vfs_read_hook call from vfs_read")
 
     # Step 3: Add new declaration + call into SYSCALL_DEFINE3(read, ...)
-    # Insert declaration before SYSCALL_DEFINE3(read, ...)
     old_syscall = 'SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)\n{'
     new_syscall = (
         '#ifdef CONFIG_KSU\n'
@@ -98,20 +95,13 @@ content = read_file(exec_path)
 if 'ksu_execveat_hook' in content:
     print("[exec.c] Upgrading...")
 
-    # Remove the 'extern bool ksu_execveat_hook __read_mostly;' line from declaration block
     content = re.sub(r'extern bool ksu_execveat_hook __read_mostly;\s*\n', '', content)
-    # Remove the ksu_handle_execveat_sucompat declaration
     content = re.sub(
         r'extern int ksu_handle_execveat_sucompat\([^)]+\);\s*\n',
         '',
         content
     )
 
-    # Replace the call block:
-    # if (unlikely(ksu_execveat_hook))
-    #     ksu_handle_execveat(...);
-    # else
-    #     ksu_handle_execveat_sucompat(...);
     old_call_re = re.compile(
         r'\tif \(unlikely\(ksu_execveat_hook\)\)\s*\n\t+ksu_handle_execveat\([^;]+;\s*\n\s*else\s*\n\t+ksu_handle_execveat_sucompat\([^;]+;\s*\n',
         re.DOTALL
@@ -140,12 +130,8 @@ content = read_file(input_path)
 if 'ksu_input_hook' in content:
     print("[input.c] Upgrading...")
 
-    # Remove 'extern bool ksu_input_hook __read_mostly;' line
     content = re.sub(r'extern bool ksu_input_hook __read_mostly;\s*\n', '', content)
 
-    # Replace call:
-    # if (unlikely(ksu_input_hook))
-    #     ksu_handle_input_handle_event(...);
     old_call_re = re.compile(
         r'\tif \(unlikely\(ksu_input_hook\)\)\s*\n\t+ksu_handle_input_handle_event\([^;]+;\s*\n'
     )
@@ -199,7 +185,12 @@ else:
 # 5. kernel/reboot.c
 #    MISSING: ksu_handle_sys_reboot
 #    Signature: int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user **arg)
-#    Inject after magic check (after LINUX_REBOOT_MAGIC2C check returns -EINVAL)
+#
+#    CRITICAL: Must inject at the VERY START of the syscall body, BEFORE the
+#    Linux magic number check. KSU uses its own magic (KSU_INSTALL_MAGIC1),
+#    which is DIFFERENT from LINUX_REBOOT_MAGIC1. If the hook is placed after
+#    the magic check, the kernel rejects KSU's supercall as -EINVAL before our
+#    hook ever runs → the KSU manager gets version 0.
 # ===========================================================================
 reboot_path = os.path.join(kernel_dir, 'kernel', 'reboot.c')
 content = read_file(reboot_path)
@@ -207,49 +198,33 @@ content = read_file(reboot_path)
 if 'ksu_handle_sys_reboot' not in content:
     print("[reboot.c] Adding ksu_handle_sys_reboot...")
 
-    # Inject declaration before SYSCALL_DEFINE4(reboot, ...)
-    # Inject call right after the magic check block (after the '\t\treturn -EINVAL;' for bad magic)
-    old_syscall = 'SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,\n\t\tvoid __user *, arg)\n{'
-    new_syscall = (
+    # Match the syscall open + first line of body so we can inject right at the top
+    old_open = (
+        'SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,\n'
+        '\t\tvoid __user *, arg)\n'
+        '{\n'
+        '\tstruct pid_namespace *pid_ns = task_active_pid_ns(current);\n'
+    )
+    new_open = (
         '#ifdef CONFIG_KSU\n'
         'int ksu_handle_sys_reboot(int magic1, int magic2, unsigned int cmd, void __user **arg);\n'
         '#endif\n'
         'SYSCALL_DEFINE4(reboot, int, magic1, int, magic2, unsigned int, cmd,\n'
         '\t\tvoid __user *, arg)\n'
-        '{'
+        '{\n'
+        '#ifdef CONFIG_KSU\n'
+        '\tksu_handle_sys_reboot(magic1, magic2, cmd, &arg);\n'
+        '#endif\n'
+        '\tstruct pid_namespace *pid_ns = task_active_pid_ns(current);\n'
     )
 
-    if old_syscall in content:
-        content = content.replace(old_syscall, new_syscall, 1)
-
-        # Now inject the call after the magic validation block
-        # The block ends with: \t\treturn -EINVAL;\n (after LINUX_REBOOT_MAGIC2C check)
-        old_after_magic = '\t\treturn -EINVAL;\n\n\t/*\n\t * If pid namespaces'
-        new_after_magic = (
-            '\t\treturn -EINVAL;\n'
-            '\n'
-            '#ifdef CONFIG_KSU\n'
-            '\tksu_handle_sys_reboot(magic1, magic2, cmd, &arg);\n'
-            '#endif\n'
-            '\n'
-            '\t/*\n\t * If pid namespaces'
-        )
-        if old_after_magic in content:
-            content = content.replace(old_after_magic, new_after_magic, 1)
-            print("  [OK] Injected ksu_handle_sys_reboot call after magic check")
-        else:
-            print("  [WARN] Could not find exact injection point for call - trying loose match")
-            # Loose: inject after the second return -EINVAL in the magic block
-            content = content.replace(
-                '\t\treturn -EINVAL;\n\n\t/*\n\t * If pid',
-                '\t\treturn -EINVAL;\n\n#ifdef CONFIG_KSU\n\tksu_handle_sys_reboot(magic1, magic2, cmd, arg);\n#endif\n\n\t/*\n\t * If pid',
-                1
-            )
-
+    if old_open in content:
+        content = content.replace(old_open, new_open, 1)
         write_file(reboot_path, content)
+        print("  [OK] Injected ksu_handle_sys_reboot at START of SYSCALL_DEFINE4(reboot)")
         print("[DONE] reboot.c: Added ksu_handle_sys_reboot")
     else:
-        print("  [WARN] Could not find SYSCALL_DEFINE4(reboot) - check manually")
+        print("  [WARN] Could not find SYSCALL_DEFINE4(reboot) body start - check manually")
 else:
     print("[SKIP] reboot.c already has ksu_handle_sys_reboot")
 
