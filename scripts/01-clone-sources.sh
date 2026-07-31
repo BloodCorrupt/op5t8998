@@ -31,9 +31,12 @@ fi
 
 # --- Clone ReSukiSU ---
 RESUKISU_PATH="${BUILDER_ROOT}/ReSukiSU"
-if [ -d "$RESUKISU_PATH" ] && [ -f "$RESUKISU_PATH/kernel/Kconfig" ]; then
+if [ -d "$RESUKISU_PATH" ] && [ -d "$RESUKISU_PATH/kernel" ]; then
     warn "ReSukiSU already exists at ${RESUKISU_PATH}"
-    info "Skipping clone. Delete the directory to re-clone."
+    substep "Pulling latest ReSukiSU updates..."
+    cd "$RESUKISU_PATH"
+    git pull || warn "Failed to pull ReSukiSU updates"
+    cd - > /dev/null
 else
     substep "Cloning ReSukiSU..."
     if [ -n "$RESUKISU_TAG" ]; then
@@ -51,7 +54,10 @@ if [ "${SUSFS_ENABLED}" = "true" ]; then
     SUSFS_PATH="${BUILDER_ROOT}/susfs4ksu"
     if [ -d "$SUSFS_PATH" ] && [ -d "$SUSFS_PATH/kernel_patches" ]; then
         warn "SuSFS already exists at ${SUSFS_PATH}"
-        info "Skipping clone. Delete the directory to re-clone."
+        substep "Pulling latest SuSFS updates..."
+        cd "$SUSFS_PATH"
+        git pull || warn "Failed to pull SuSFS updates"
+        cd - > /dev/null
     else
         substep "Cloning SuSFS (${SUSFS_BRANCH})..."
         info "Repo: ${SUSFS_REPO}"
