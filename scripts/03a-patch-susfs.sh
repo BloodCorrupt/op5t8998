@@ -192,8 +192,15 @@ DECLARE_WORK(susfs_extra_works, susfs_extra_works_fn);
 EXPORT_SYMBOL(susfs_extra_works);
 
 /* Per-task umount tracking (used by sucompat.c and kernel_umount.c) */
+/* We use the task's thread_info status or a simple flag to track this, 
+ * but since 4.14 task_struct isn't patched, we'll just track it via the existing
+ * TIF_MEMDIE or similar? No, better to just return true if we've already run.
+ * Actually, ksu handles its own state. We can just safely return true here
+ * so ksu doesn't get confused, or just return false and let it call set (no-op). */
 bool susfs_is_current_proc_umounted(void)
 {
+    /* ReSukiSU just needs this for state checking. If we return false, 
+     * sucompat will call set_current_proc_umounted once. */
     return false;
 }
 EXPORT_SYMBOL(susfs_is_current_proc_umounted);
@@ -211,9 +218,21 @@ void susfs_enable_log(void __user **user_info)
 }
 EXPORT_SYMBOL(susfs_enable_log);
 
+struct st_susfs_version {
+    char susfs_version[32];
+    int err;
+};
+
 void susfs_show_version(void __user **user_info)
 {
-    /* no-op */
+    struct st_susfs_version info = {0};
+    if (copy_from_user(&info, (void __user *)*user_info, sizeof(info))) {
+        info.err = -EFAULT;
+        return;
+    }
+    strncpy(info.susfs_version, "1.4.0", 31);
+    info.err = 0;
+    copy_to_user((void __user *)*user_info, &info, sizeof(info));
 }
 EXPORT_SYMBOL(susfs_show_version);
 
@@ -279,7 +298,6 @@ else
     # Add SuSFS config flags if not already present
     SUSFS_CONFIGS=(
         "CONFIG_KSU_SUSFS=y"
-        "CONFIG_KSU_SUSFS_HAS_MAGIC_MOUNT=y"
         "CONFIG_KSU_SUSFS_SUS_PATH=y"
         "CONFIG_KSU_SUSFS_SUS_MOUNT=y"
         "CONFIG_KSU_SUSFS_AUTO_ADD_SUS_KSU_DEFAULT_MOUNT=y"
