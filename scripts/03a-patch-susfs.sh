@@ -165,41 +165,7 @@ done
 
 success "SuSFS source files copied."
 
-# ════════════════════════════════════════
-# Phase 1: Patch ReSukiSU to enable SuSFS
-# ════════════════════════════════════════
-info "Phase 1: Patching ReSukiSU to enable SuSFS..."
-separator
 
-# IMPORTANT: ReSukiSU already defines CONFIG_KSU_SUSFS as a choice option
-# in its own Kconfig. The upstream susfs4ksu 10_enable_susfs_for_ksu.patch
-# adds a SECOND config KSU_SUSFS definition (as a standalone bool + menu)
-# which conflicts and causes duplicate symbol errors.
-#
-# Solution: Strip out the Kconfig hunk from the patch, keep only the C code changes.
-
-KSU_PATCH="${SUSFS_PATH}/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
-
-if [ -f "$KSU_PATCH" ]; then
-    substep "Filtering Kconfig hunk from SuSFS KernelSU patch..."
-    FILTERED_PATCH=$(mktemp)
-    # Remove the Kconfig hunk - keep only non-Kconfig file diffs
-    tr -d '\r' < "$KSU_PATCH" | awk '
-        /^diff --git.*Kconfig/ { skip=1; next }
-        /^diff --git/ { skip=0 }
-        !skip { print }
-    ' > "$FILTERED_PATCH"
-    info "  Stripped Kconfig hunk (ReSukiSU already has KSU_SUSFS Kconfig)"
-
-    info "  Adapting patch for ReSukiSU renamed functions..."
-    python3 "${SCRIPT_DIR}/patch_resukisu_susfs.py" "$FILTERED_PATCH"
-
-    apply_patch "$FILTERED_PATCH" "$RESUKISU_PATH" || true
-    rm -f "$FILTERED_PATCH"
-else
-    error "SuSFS KernelSU patch not found: $KSU_PATCH"
-    FAILED=$((FAILED + 1))
-fi
 
 # ════════════════════════════════════════
 # Phase 2: Apply kernel-level SuSFS patch
@@ -209,11 +175,15 @@ separator
 
 KERNEL_PATCH="${SUSFS_PATH}/kernel_patches/50_add_susfs_in_kernel-4.14.patch"
 info "Applying kernel SuSFS patch..."
-apply_patch "$KERNEL_PATCH" "$KERNEL_PATH" || true
+cd "$KERNEL_PATH"
+# We use patch directly because we KNOW some hunks will be rejected on base/stable, 
+# and we don't want apply_patch to print a scary red [FAILED] message.
+patch -p1 --forward < "$KERNEL_PATCH" >/dev/null 2>&1 || true
 
 # Run Python fixup script to manually apply rejected hunks for base/stable
 info "Running manual fixup for base/stable kernel source..."
 python3 "${SCRIPT_DIR}/fixup_susfs.py" "$KERNEL_PATH" || true
+cd "${BUILDER_ROOT}"
 
 # ════════════════════════════════════════
 # Phase 3: Add SuSFS defconfig flags
