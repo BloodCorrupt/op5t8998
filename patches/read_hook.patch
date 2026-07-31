@@ -1,7 +1,7 @@
 diff --git a/fs/read_write.c b/fs/read_write.c
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -570,6 +570,10 @@
+@@ -570,8 +570,14 @@
  
  SYSCALL_DEFINE3(read, unsigned int, fd, char __user *, buf, size_t, count)
  {
@@ -14,3 +14,5 @@ diff --git a/fs/read_write.c b/fs/read_write.c
 +#ifdef CONFIG_KSU
 +	ksu_handle_sys_read(fd, &buf, &count);
 +#endif
+ 	if (f.file) {
+ 		loff_t pos = file_pos_read(f.file);
