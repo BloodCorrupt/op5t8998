@@ -150,6 +150,12 @@ for f in "${SUSFS_PATH}/kernel_patches/fs/"*; do
     fi
 done
 
+if [ ! -f "${KERNEL_PATH}/fs/susfs.c" ]; then
+    error "FATAL: SuSFS source files (fs/susfs.c) were not copied successfully!"
+    error "Check if ${SUSFS_PATH}/kernel_patches/fs/ exists and contains the files."
+    exit 1
+fi
+
 substep "Copying SuSFS header files..."
 for f in "${SUSFS_PATH}/kernel_patches/include/linux/"*; do
     if [ -f "$f" ]; then
