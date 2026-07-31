@@ -89,6 +89,7 @@ make_args=(
 )
 
 # Run the build
+mkdir -p "${OUTPUT_PATH}/lib/test_fortify"
 make "${make_args[@]}" 2>&1 | tee "${BUILDER_ROOT}/build.log"
 BUILD_EXIT=${PIPESTATUS[0]}
 
