@@ -236,15 +236,39 @@ void susfs_show_version(void __user **user_info)
 }
 EXPORT_SYMBOL(susfs_show_version);
 
+struct st_susfs_enabled_features {
+    char enabled_features[256];
+    int err;
+};
+
 void susfs_get_enabled_features(void __user **user_info)
 {
-    /* no-op */
+    struct st_susfs_enabled_features info = {0};
+    if (copy_from_user(&info, (void __user *)*user_info, sizeof(info))) {
+        info.err = -EFAULT;
+        return;
+    }
+    strncpy(info.enabled_features, "CONFIG_KSU_SUSFS_SUS_PATH\nCONFIG_KSU_SUSFS_SUS_MOUNT\n", 255);
+    info.err = 0;
+    copy_to_user((void __user *)*user_info, &info, sizeof(info));
 }
 EXPORT_SYMBOL(susfs_get_enabled_features);
 
+struct st_susfs_variant {
+    char susfs_variant[16];
+    int err;
+};
+
 void susfs_show_variant(void __user **user_info)
 {
-    /* no-op */
+    struct st_susfs_variant info = {0};
+    if (copy_from_user(&info, (void __user *)*user_info, sizeof(info))) {
+        info.err = -EFAULT;
+        return;
+    }
+    strncpy(info.susfs_variant, "release", 15);
+    info.err = 0;
+    copy_to_user((void __user *)*user_info, &info, sizeof(info));
 }
 EXPORT_SYMBOL(susfs_show_variant);
 
