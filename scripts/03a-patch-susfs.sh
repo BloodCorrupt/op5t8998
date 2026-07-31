@@ -219,7 +219,7 @@ void susfs_enable_log(void __user **user_info)
 EXPORT_SYMBOL(susfs_enable_log);
 
 struct st_susfs_version {
-    char susfs_version[32];
+    char susfs_version[16];
     int err;
 };
 
@@ -228,10 +228,11 @@ void susfs_show_version(void __user **user_info)
     struct st_susfs_version info = {0};
     if (copy_from_user(&info, (void __user *)*user_info, sizeof(info))) {
         info.err = -EFAULT;
-        return;
+        goto out_version;
     }
-    strncpy(info.susfs_version, "1.4.0", 31);
+    strncpy(info.susfs_version, "1.4.0", 15);
     info.err = 0;
+out_version:
     copy_to_user((void __user *)*user_info, &info, sizeof(info));
 }
 EXPORT_SYMBOL(susfs_show_version);
@@ -246,10 +247,11 @@ void susfs_get_enabled_features(void __user **user_info)
     struct st_susfs_enabled_features info = {0};
     if (copy_from_user(&info, (void __user *)*user_info, sizeof(info))) {
         info.err = -EFAULT;
-        return;
+        goto out_features;
     }
     strncpy(info.enabled_features, "CONFIG_KSU_SUSFS_SUS_PATH\nCONFIG_KSU_SUSFS_SUS_MOUNT\n", 255);
     info.err = 0;
+out_features:
     copy_to_user((void __user *)*user_info, &info, sizeof(info));
 }
 EXPORT_SYMBOL(susfs_get_enabled_features);
@@ -264,10 +266,11 @@ void susfs_show_variant(void __user **user_info)
     struct st_susfs_variant info = {0};
     if (copy_from_user(&info, (void __user *)*user_info, sizeof(info))) {
         info.err = -EFAULT;
-        return;
+        goto out_variant;
     }
     strncpy(info.susfs_variant, "release", 15);
     info.err = 0;
+out_variant:
     copy_to_user((void __user *)*user_info, &info, sizeof(info));
 }
 EXPORT_SYMBOL(susfs_show_variant);
