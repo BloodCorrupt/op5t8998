@@ -111,7 +111,6 @@ PATCH_FILES=(
     "input_hook.patch"
     "read_hook.patch"
     "setuid_hook.patch"
-    "defconfig_ksu.patch"
 )
 
 for pf in "${PATCH_FILES[@]}"; do
