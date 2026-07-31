@@ -57,9 +57,16 @@ substep "Setting KSU configuration flags..."
 # Enable KSU
 ./scripts/config --file "$CONFIG_FILE" --enable CONFIG_KSU
 
-# Set the hooking method choice to MANUAL_HOOK
-./scripts/config --file "$CONFIG_FILE" --disable CONFIG_KSU_TRACEPOINT_HOOK
-./scripts/config --file "$CONFIG_FILE" --enable CONFIG_KSU_MANUAL_HOOK
+# Set the hooking method choice
+if [ "$SUSFS_ENABLED" = "true" ]; then
+    # KSU_SUSFS is set later in the SuSFS block
+    ./scripts/config --file "$CONFIG_FILE" --disable CONFIG_KSU_MANUAL_HOOK
+    ./scripts/config --file "$CONFIG_FILE" --disable CONFIG_KSU_TRACEPOINT_HOOK
+else
+    ./scripts/config --file "$CONFIG_FILE" --enable CONFIG_KSU_MANUAL_HOOK
+    ./scripts/config --file "$CONFIG_FILE" --disable CONFIG_KSU_TRACEPOINT_HOOK
+    ./scripts/config --file "$CONFIG_FILE" --disable CONFIG_KSU_SUSFS
+fi
 
 # Disable debug mode
 ./scripts/config --file "$CONFIG_FILE" --disable CONFIG_KSU_DEBUG
@@ -95,14 +102,32 @@ separator
 substep "Final configuration check..."
 FINAL_OK=true
 
-for cfg in CONFIG_KSU CONFIG_KSU_MANUAL_HOOK; do
-    if ! grep -q "^${cfg}=y" "$CONFIG_FILE"; then
-        error "  ${cfg} is NOT enabled in final .config!"
+    # CONFIG_KSU is always required
+    if ! grep -q "^CONFIG_KSU=y" "$CONFIG_FILE"; then
+        error "CONFIG_KSU is NOT enabled in final .config!"
         FINAL_OK=false
     else
-        success "  ${cfg}=y ✓"
+        success "CONFIG_KSU=y ✓"
     fi
-done
+
+    # Check hooking method (mutually exclusive)
+    if [ "$SUSFS_ENABLED" = "true" ]; then
+        # If SuSFS is enabled, KSU_SUSFS replaces KSU_MANUAL_HOOK as the hook method
+        if ! grep -q "^CONFIG_KSU_SUSFS=y" "$CONFIG_FILE"; then
+            error "CONFIG_KSU_SUSFS is NOT enabled in final .config!"
+            FINAL_OK=false
+        else
+            success "CONFIG_KSU_SUSFS=y ✓ (Hook method)"
+        fi
+    else
+        # If SuSFS is disabled, we must use KSU_MANUAL_HOOK
+        if ! grep -q "^CONFIG_KSU_MANUAL_HOOK=y" "$CONFIG_FILE"; then
+            error "CONFIG_KSU_MANUAL_HOOK is NOT enabled in final .config!"
+            FINAL_OK=false
+        else
+            success "CONFIG_KSU_MANUAL_HOOK=y ✓ (Hook method)"
+        fi
+    fi
 
 if [ "${SUSFS_ENABLED}" = "true" ]; then
     substep "Checking SuSFS configuration..."
