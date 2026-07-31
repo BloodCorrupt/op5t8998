@@ -94,6 +94,16 @@ else
     fi
 fi
 
+# --- Patch ReSukiSU Kconfig to remove 4.14-incompatible dependencies ---
+substep "Patching ReSukiSU Kconfig dependencies for older kernels..."
+if [ -f "$KSU_DRIVER_DIR/Kconfig" ]; then
+    # kernel-4.14 doesn't define THREAD_INFO_IN_TASK, so KSU_SUSFS will silently drop if it depends on it.
+    sed -i 's/depends on THREAD_INFO_IN_TASK/depends on/g' "$KSU_DRIVER_DIR/Kconfig"
+    sed -i 's/depends on  &&/depends on/g' "$KSU_DRIVER_DIR/Kconfig"
+    # Clean up empty depends on
+    sed -i '/depends on$/d' "$KSU_DRIVER_DIR/Kconfig"
+fi
+
 # --- Update drivers/Makefile ---
 substep "Updating drivers/Makefile..."
 if grep -q "kernelsu" "$DRIVER_MAKEFILE"; then
