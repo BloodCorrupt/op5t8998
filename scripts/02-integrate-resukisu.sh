@@ -53,17 +53,20 @@ for dummy in "$DRIVER_DIR"/Kconfig.ksu* "$DRIVER_DIR"/Kconfig.kernelsu*; do
 done
 
 # Remove stale KSU entries from drivers/Makefile (we'll re-add the correct one)
-if grep -q "kernelsu" "$DRIVER_MAKEFILE" 2>/dev/null; then
+if grep -i -q "ksu" "$DRIVER_MAKEFILE" 2>/dev/null; then
     substep "Removing stale KSU entries from drivers/Makefile..."
     sed -i '/kernelsu/d' "$DRIVER_MAKEFILE"
+    sed -i '/ksu.dummy/d' "$DRIVER_MAKEFILE"
     sed -i '/# ReSukiSU/d' "$DRIVER_MAKEFILE"
     sed -i '/# KernelSU/d' "$DRIVER_MAKEFILE"
 fi
 
 # Remove stale KSU entries from drivers/Kconfig
-if grep -q "kernelsu" "$DRIVER_KCONFIG" 2>/dev/null; then
+if grep -i -q "ksu" "$DRIVER_KCONFIG" 2>/dev/null; then
     substep "Removing stale KSU entries from drivers/Kconfig..."
     sed -i '/kernelsu/d' "$DRIVER_KCONFIG"
+    sed -i '/ksu.dummy/d' "$DRIVER_KCONFIG"
+    sed -i '/KSU_SRC/d' "$DRIVER_KCONFIG"
 fi
 
 # Clean the output directory .config to remove stale KSU configs
