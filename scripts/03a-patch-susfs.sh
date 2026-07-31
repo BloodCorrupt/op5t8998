@@ -230,7 +230,7 @@ void susfs_show_version(void __user **user_info)
         info.err = -EFAULT;
         goto out_version;
     }
-    strncpy(info.susfs_version, "1.4.0", 15);
+    strncpy(info.susfs_version, "1.5.5", 15);
     info.err = 0;
 out_version:
     copy_to_user((void __user *)*user_info, &info, sizeof(info));
