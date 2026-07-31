@@ -1,7 +1,10 @@
 diff --git a/fs/read_write.c b/fs/read_write.c
 --- a/fs/read_write.c
 +++ b/fs/read_write.c
-@@ -432,12 +432,15 @@ ssize_t __vfs_read(struct file *file, char __user *buf, size_t count,
+@@ -429,16 +429,19 @@
+ }
+ EXPORT_SYMBOL(kernel_read);
+ 
  ssize_t vfs_read(struct file *file, char __user *buf, size_t count, loff_t *pos)
  {
  	ssize_t ret;
@@ -15,6 +18,6 @@ diff --git a/fs/read_write.c b/fs/read_write.c
  	if (unlikely(!access_ok(VERIFY_WRITE, buf, count)))
  		return -EFAULT;
  
-+	ksu_handle_vfs_read(&file, &buf, &count, &pos);
  	ret = rw_verify_area(READ, file, pos, count);
++	ksu_handle_vfs_read(&file, &buf, &count, &pos);
  	if (!ret) {

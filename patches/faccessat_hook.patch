@@ -1,8 +1,10 @@
 diff --git a/fs/open.c b/fs/open.c
 --- a/fs/open.c
 +++ b/fs/open.c
-@@ -361,6 +361,8 @@ EXPORT_SYMBOL(do_faccessat);
- 
+@@ -359,17 +359,20 @@
+  * We do this by temporarily clearing all FS-related capabilities and
+  * switching the fsuid/fsgid around to the real ones.
+  */
  SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
  {
 +extern int ksu_handle_faccessat(int *dfd, const char __user **filename_user, int *mode,
@@ -10,7 +12,9 @@ diff --git a/fs/open.c b/fs/open.c
  	const struct cred *old_cred;
  	struct cred *override_cred;
  	struct path path;
-@@ -370,6 +372,7 @@ SYSCALL_DEFINE3(faccessat, int, dfd, const char __user *, filename, int, mode)
+ 	struct inode *inode;
+ 	struct vfsmount *mnt;
+ 	int res;
  	unsigned int lookup_flags = LOOKUP_FOLLOW;
  
  	if (mode & ~S_IRWXO)	/* where's F_OK, X_OK, W_OK, R_OK? */
@@ -18,5 +22,3 @@ diff --git a/fs/open.c b/fs/open.c
  
 +	ksu_handle_faccessat(&dfd, &filename, &mode, NULL);
  	override_cred = prepare_creds();
- 	if (!override_cred)
- 		return -ENOMEM;
