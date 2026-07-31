@@ -3,7 +3,7 @@
 # Step 3: Apply Manual Hook Patches to Kernel Source
 # ============================================================
 # These patches add ReSukiSU hooks to the kernel source.
-# For kernel 4.4.x (non-GKI), manual hooks are required.
+# For kernel 4.14.x (non-GKI), manual hooks are required.
 # ============================================================
 set -e
 
@@ -20,6 +20,14 @@ if [ ! -d "$KERNEL_PATH" ] || [ ! -f "$KERNEL_PATH/Makefile" ]; then
 fi
 
 cd "$KERNEL_PATH"
+
+# Auto-detect if KSU hooks are already present in the kernel source
+if grep -q "ksu_handle_execve" fs/exec.c 2>/dev/null; then
+    success "Kernel already has KernelSU hooks integrated (found in fs/exec.c)."
+    success "Skipping manual hook patches."
+    mark_step_done "03-patch-kernel"
+    exit 0
+fi
 
 # Reset only target patch files to ensure clean application without undoing Kconfig integration
 substep "Ensuring clean kernel working tree for target patches..."
