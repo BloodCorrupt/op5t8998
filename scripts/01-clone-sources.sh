@@ -1,3 +1,4 @@
+
 #!/bin/bash
 # ============================================================
 # Step 1: Clone Kernel Source, ReSukiSU, SuSFS, and Toolchains
@@ -37,10 +38,13 @@ fi
 
 # --- Clone ReSukiSU ---
 RESUKISU_PATH="${BUILDER_ROOT}/ReSukiSU"
-if [ -d "$RESUKISU_PATH" ] && [ -d "$RESUKISU_PATH/kernel" ]; then
+if [ -d "$RESUKISU_PATH" ]; then
     warn "ReSukiSU already exists at ${RESUKISU_PATH}"
-    substep "Pulling latest ReSukiSU updates..."
     cd "$RESUKISU_PATH"
+    substep "Resetting ReSukiSU to clean state..."
+    git reset --hard HEAD || true
+    git clean -fd || true
+    substep "Pulling latest ReSukiSU updates..."
     git pull || warn "Failed to pull ReSukiSU updates"
     cd - > /dev/null
 else
