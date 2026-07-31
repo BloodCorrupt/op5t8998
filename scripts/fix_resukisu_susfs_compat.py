@@ -45,4 +45,27 @@ if "SUSFS_MAGIC" in supercall_content and "#define SUSFS_MAGIC" not in supercall
     with open(supercall_file, "w", newline='\n') as f:
         f.write(supercall_content)
 
+if "susfs_is_current_proc_umounted" not in supercall_content:
+    pass # Just checking, we will inject in dispatch.c
+
+dummy_funcs = """
+/* SuSFS 1.4.x Compatibility Dummy Functions */
+#include <linux/workqueue.h>
+struct work_struct susfs_extra_works;
+bool susfs_is_current_proc_umounted(void) { return false; }
+void susfs_set_current_proc_umounted(void) {}
+void susfs_start_sdcard_monitor_fn(void) {}
+void susfs_enable_log(void *arg) {}
+long susfs_get_enabled_features(void *arg) { return 0; }
+long susfs_show_variant(void *arg) { return 0; }
+long susfs_show_version(void *arg) { return 0; }
+"""
+
+with open(dispatch_file, "r") as f:
+    dispatch_content = f.read()
+
+if "susfs_extra_works" not in dispatch_content:
+    with open(dispatch_file, "a", newline='\n') as f:
+        f.write("\n" + dummy_funcs)
+
 print("ReSukiSU patched for older SuSFS compatibility.")
