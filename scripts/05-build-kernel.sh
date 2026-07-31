@@ -82,6 +82,8 @@ make_args=(
     CROSS_COMPILE_COMPAT="$CROSS_COMPILE_ARM32"
     LD_COMPAT="${CROSS_COMPILE_ARM32}ld"
     CC_COMPAT="${CROSS_COMPILE_ARM32}gcc"
+    OBJCOPY="llvm-objcopy"
+    OBJDUMP="llvm-objdump"
     CLANG_TRIPLE="$CLANG_TRIPLE"
     -j"$THREADS"
 )
