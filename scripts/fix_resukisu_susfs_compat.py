@@ -1,11 +1,16 @@
 import os
 import re
+import sys
 
-dispatch_file = "ReSukiSU/kernel/supercall/dispatch.c"
+if len(sys.argv) < 2:
+    print("Usage: python fix_resukisu_susfs_compat.py <path_to_dispatch.c>")
+    exit(1)
+
+dispatch_file = sys.argv[1]
 
 if not os.path.exists(dispatch_file):
     print(f"File not found: {dispatch_file}")
-    exit(0)
+    exit(1)
 
 with open(dispatch_file, "r") as f:
     content = f.read()
