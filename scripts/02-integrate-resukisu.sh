@@ -39,6 +39,40 @@ if [ -d "$KSU_DRIVER_DIR" ] && [ -f "$KSU_DRIVER_DIR/Kconfig" ]; then
     rm -rf "$KSU_DRIVER_DIR"
 fi
 
+# --- Clean up any pre-existing KSU artifacts ---
+# Some kernel sources or previous integrations may leave behind dummy Kconfig
+# files or stale references that conflict with ReSukiSU
+substep "Cleaning up pre-existing KSU artifacts..."
+
+# Remove dummy Kconfig files
+for dummy in "$DRIVER_DIR"/Kconfig.ksu* "$DRIVER_DIR"/Kconfig.kernelsu*; do
+    if [ -f "$dummy" ]; then
+        warn "  Removing stale KSU artifact: $(basename "$dummy")"
+        rm -f "$dummy"
+    fi
+done
+
+# Remove stale KSU entries from drivers/Makefile (we'll re-add the correct one)
+if grep -q "kernelsu" "$DRIVER_MAKEFILE" 2>/dev/null; then
+    substep "Removing stale KSU entries from drivers/Makefile..."
+    sed -i '/kernelsu/d' "$DRIVER_MAKEFILE"
+    sed -i '/# ReSukiSU/d' "$DRIVER_MAKEFILE"
+    sed -i '/# KernelSU/d' "$DRIVER_MAKEFILE"
+fi
+
+# Remove stale KSU entries from drivers/Kconfig
+if grep -q "kernelsu" "$DRIVER_KCONFIG" 2>/dev/null; then
+    substep "Removing stale KSU entries from drivers/Kconfig..."
+    sed -i '/kernelsu/d' "$DRIVER_KCONFIG"
+fi
+
+# Clean the output directory .config to remove stale KSU configs
+OUTPUT_CONFIG="${KERNEL_PATH}/${OUTPUT_DIR:-out}/.config"
+if [ -f "$OUTPUT_CONFIG" ]; then
+    substep "Removing stale KSU configs from .config..."
+    sed -i '/CONFIG_KSU/d' "$OUTPUT_CONFIG"
+fi
+
 # --- Create symlink to ReSukiSU kernel module ---
 substep "Creating symlink: drivers/kernelsu -> ReSukiSU/kernel"
 ln -sf "${RESUKISU_PATH}/kernel" "$KSU_DRIVER_DIR"
