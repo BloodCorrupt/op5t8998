@@ -191,7 +191,10 @@ if [ -f "$KSU_PATCH" ]; then
     ' > "$FILTERED_PATCH"
     info "  Stripped Kconfig hunk (ReSukiSU already has KSU_SUSFS Kconfig)"
 
-    apply_patch "$FILTERED_PATCH" "$KSU_DRIVER_DIR" || true
+    info "  Adapting patch for ReSukiSU renamed functions..."
+    python3 "${SCRIPT_DIR}/patch_resukisu_susfs.py" "$FILTERED_PATCH"
+
+    apply_patch "$FILTERED_PATCH" "$RESUKISU_PATH" || true
     rm -f "$FILTERED_PATCH"
 else
     error "SuSFS KernelSU patch not found: $KSU_PATCH"
@@ -205,7 +208,12 @@ info "Phase 2: Applying kernel-level SuSFS patch..."
 separator
 
 KERNEL_PATCH="${SUSFS_PATH}/kernel_patches/50_add_susfs_in_kernel-4.14.patch"
+info "Applying kernel SuSFS patch..."
 apply_patch "$KERNEL_PATCH" "$KERNEL_PATH" || true
+
+# Run Python fixup script to manually apply rejected hunks for base/stable
+info "Running manual fixup for base/stable kernel source..."
+python3 "${SCRIPT_DIR}/fixup_susfs.py" "$KERNEL_PATH" || true
 
 # ════════════════════════════════════════
 # Phase 3: Add SuSFS defconfig flags
