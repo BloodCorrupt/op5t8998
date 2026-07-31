@@ -171,7 +171,7 @@ success "SuSFS source files copied."
 # Phase 1.5: ReSukiSU compatibility for older SuSFS
 # ════════════════════════════════════════
 info "Phase 1.5: Patching ReSukiSU for SuSFS 1.4.x compatibility..."
-python3 "${SCRIPT_DIR}/fix_resukisu_susfs_compat.py" "${KSU_DRIVER_DIR}/supercall/dispatch.c" || true
+python3 "${SCRIPT_DIR}/fix_resukisu_susfs_compat.py" "${KSU_DRIVER_DIR}/supercall/dispatch.c" "${KSU_DRIVER_DIR}/supercall/supercall.c" || true
 
 # ════════════════════════════════════════
 # Phase 2: Apply kernel-level SuSFS patch
