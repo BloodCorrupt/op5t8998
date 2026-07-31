@@ -24,6 +24,11 @@ mkdir -p "$FINAL_OUTPUT_PATH"
 # --- Copy kernel image ---
 substep "Copying kernel image to output..."
 cp "$KERNEL_IMG" "${FINAL_OUTPUT_PATH}/${KERNEL_IMAGE}"
+if [ "${SUSFS_ENABLED}" = "true" ]; then
+    ANYKERNEL_ZIP="${FINAL_OUTPUT_PATH}/ReSukiSU-SuSFS-4.14-OnePlus5-$(date +%Y%m%d-%H%M).zip"
+else
+    ANYKERNEL_ZIP="${FINAL_OUTPUT_PATH}/ReSukiSU-4.14-OnePlus5-$(date +%Y%m%d-%H%M).zip"
+fi
 success "Kernel image: ${FINAL_OUTPUT_PATH}/${KERNEL_IMAGE}"
 
 # --- Repack boot.img (optional) ---
@@ -127,7 +132,7 @@ device.name2=OnePlus5T
 device.name3=cheeseburger
 device.name4=OnePlus5
 device.name5=
-supported.versions=9 - 15
+supported.versions=9 - 16
 supported.patchlevels=
 supported.vendorpatchlevels=
 '; } # end properties

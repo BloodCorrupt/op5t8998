@@ -110,6 +110,18 @@ for cfg in CONFIG_KSU CONFIG_KSU_MANUAL_HOOK; do
     fi
 done
 
+if [ "${SUSFS_ENABLED}" = "true" ]; then
+    substep "Checking SuSFS configuration..."
+    for cfg in CONFIG_KSU_SUSFS CONFIG_KSU_SUSFS_SUS_PATH CONFIG_KSU_SUSFS_SUS_MOUNT; do
+        if ! grep -q "^${cfg}=y" "$CONFIG_FILE"; then
+            error "  ${cfg} is NOT enabled in final .config! (SuSFS features might be missing)"
+            FINAL_OK=false
+        else
+            success "  ${cfg}=y ✓"
+        fi
+    done
+fi
+
 if [ "$FINAL_OK" = false ]; then
     error "Configuration verification failed."
     error "Check that drivers/kernelsu symlink exists in kernel_source/drivers/."

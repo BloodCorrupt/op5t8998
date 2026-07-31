@@ -5,8 +5,8 @@
 #   Automated kernel builder with ReSukiSU (KernelSU) integration
 #   for OnePlus 5 (cheeseburger) / 5T (dumpling)
 #
-#   Kernel: 4.4.302 (Non-GKI, manual hooks)
-#   Source: LineageOS/android_kernel_oneplus_msm8998
+#   Kernel: 4.14.355 (Non-GKI, manual hooks)
+#   Source: ederevx/x-ft_kernel_oneplus_msm8998
 # ============================================================
 set -e
 
@@ -25,9 +25,14 @@ show_banner() {
     echo "║                                                  ║"
     echo "║   ⚡ OnePlus 5/5T ReSukiSU Kernel Builder ⚡    ║"
     echo "║                                                  ║"
-    echo "║   Kernel:  4.4.302 (Non-GKI)                     ║"
+    echo "║   Kernel:  4.14.355 (Non-GKI)                   ║"
     echo "║   Device:  OnePlus 5 / 5T                        ║"
     echo "║   Root:    ReSukiSU (KernelSU fork)              ║"
+    if [ "${SUSFS_ENABLED}" = "true" ]; then
+    echo "║   SuSFS:   ✓ Enabled                             ║"
+    else
+    echo "║   SuSFS:   ✗ Disabled                            ║"
+    fi
     echo "║                                                  ║"
     echo "╚══════════════════════════════════════════════════╝"
     echo -e "${NC}"
@@ -42,6 +47,14 @@ show_status() {
         "01-clone-sources:Clone Sources"
         "02-integrate-resukisu:Integrate ReSukiSU"
         "03-patch-kernel:Apply Patches"
+    )
+
+    # Add SuSFS step if enabled
+    if [ "${SUSFS_ENABLED}" = "true" ]; then
+        steps+=("03a-patch-susfs:Apply SuSFS Patches")
+    fi
+
+    steps+=(
         "04-configure-kernel:Configure Kernel"
         "05-build-kernel:Build Kernel"
         "06-package-output:Package Output"
@@ -70,6 +83,9 @@ show_menu() {
     echo -e "  ${WHITE}3)${NC}  Clone Sources Only"
     echo -e "  ${WHITE}4)${NC}  Integrate ReSukiSU Only"
     echo -e "  ${WHITE}5)${NC}  Apply Patches Only"
+    if [ "${SUSFS_ENABLED}" = "true" ]; then
+    echo -e "  ${WHITE}5a)${NC} Apply SuSFS Patches Only"
+    fi
     echo -e "  ${WHITE}6)${NC}  Configure Kernel Only"
     echo -e "  ${WHITE}7)${NC}  Build Kernel Only"
     echo -e "  ${WHITE}8)${NC}  Package Output Only"
@@ -107,6 +123,14 @@ full_build() {
         "01-clone-sources.sh"
         "02-integrate-resukisu.sh"
         "03-patch-kernel.sh"
+    )
+
+    # Add SuSFS step if enabled
+    if [ "${SUSFS_ENABLED}" = "true" ]; then
+        steps+=("03a-patch-susfs.sh")
+    fi
+
+    steps+=(
         "04-configure-kernel.sh"
         "05-build-kernel.sh"
         "06-package-output.sh"
@@ -171,6 +195,13 @@ main() {
             3) run_step "01-clone-sources.sh" ;;
             4) run_step "02-integrate-resukisu.sh" ;;
             5) run_step "03-patch-kernel.sh" ;;
+            5a|5A) 
+                if [ "${SUSFS_ENABLED}" = "true" ]; then
+                    run_step "03a-patch-susfs.sh"
+                else
+                    error "SuSFS is disabled in builder.conf"
+                fi
+                ;;
             6) run_step "04-configure-kernel.sh" ;;
             7) run_step "05-build-kernel.sh" ;;
             8) run_step "06-package-output.sh" ;;
@@ -202,6 +233,13 @@ if [ $# -gt 0 ]; then
         --clone)    run_step "01-clone-sources.sh" ;;
         --integrate) run_step "02-integrate-resukisu.sh" ;;
         --patch)    run_step "03-patch-kernel.sh" ;;
+        --susfs)    
+            if [ "${SUSFS_ENABLED}" = "true" ]; then
+                run_step "03a-patch-susfs.sh"
+            else
+                error "SuSFS is disabled in builder.conf"
+            fi
+            ;;
         --config)   run_step "04-configure-kernel.sh" ;;
         --build)    run_step "05-build-kernel.sh" ;;
         --package)  run_step "06-package-output.sh" ;;
@@ -216,6 +254,7 @@ if [ $# -gt 0 ]; then
             echo "  --clone       Clone sources only"
             echo "  --integrate   Integrate ReSukiSU only"
             echo "  --patch       Apply patches only"
+            echo "  --susfs       Apply SuSFS patches only"
             echo "  --config      Configure kernel only"
             echo "  --build       Build kernel only"
             echo "  --package     Package output only"

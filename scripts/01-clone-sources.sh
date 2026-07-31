@@ -1,6 +1,6 @@
 #!/bin/bash
 # ============================================================
-# Step 1: Clone Kernel Source, ReSukiSU, and Toolchains
+# Step 1: Clone Kernel Source, ReSukiSU, SuSFS, and Toolchains
 # ============================================================
 set -e
 
@@ -44,6 +44,23 @@ else
         git clone --depth=1 -b "$RESUKISU_BRANCH" "$RESUKISU_REPO" "$RESUKISU_PATH"
     fi
     success "ReSukiSU cloned."
+fi
+
+# --- Clone SuSFS (optional) ---
+if [ "${SUSFS_ENABLED}" = "true" ]; then
+    SUSFS_PATH="${BUILDER_ROOT}/susfs4ksu"
+    if [ -d "$SUSFS_PATH" ] && [ -d "$SUSFS_PATH/kernel_patches" ]; then
+        warn "SuSFS already exists at ${SUSFS_PATH}"
+        info "Skipping clone. Delete the directory to re-clone."
+    else
+        substep "Cloning SuSFS (${SUSFS_BRANCH})..."
+        info "Repo: ${SUSFS_REPO}"
+        info "Branch: ${SUSFS_BRANCH}"
+        git clone --depth=1 -b "$SUSFS_BRANCH" "$SUSFS_REPO" "$SUSFS_PATH"
+        success "SuSFS cloned."
+    fi
+else
+    info "SuSFS is disabled. Skipping SuSFS clone."
 fi
 
 # --- Download Toolchain ---
