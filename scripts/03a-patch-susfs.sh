@@ -165,8 +165,32 @@ success "SuSFS source files copied."
 info "Phase 1: Patching ReSukiSU to enable SuSFS..."
 separator
 
+# IMPORTANT: ReSukiSU already defines CONFIG_KSU_SUSFS as a choice option
+# in its own Kconfig. The upstream susfs4ksu 10_enable_susfs_for_ksu.patch
+# adds a SECOND config KSU_SUSFS definition (as a standalone bool + menu)
+# which conflicts and causes duplicate symbol errors.
+#
+# Solution: Strip out the Kconfig hunk from the patch, keep only the C code changes.
+
 KSU_PATCH="${SUSFS_PATH}/kernel_patches/KernelSU/10_enable_susfs_for_ksu.patch"
-apply_patch "$KSU_PATCH" "$KSU_DRIVER_DIR" || true
+
+if [ -f "$KSU_PATCH" ]; then
+    substep "Filtering Kconfig hunk from SuSFS KernelSU patch..."
+    FILTERED_PATCH=$(mktemp)
+    # Remove the Kconfig hunk - keep only non-Kconfig file diffs
+    tr -d '\r' < "$KSU_PATCH" | awk '
+        /^diff --git.*Kconfig/ { skip=1; next }
+        /^diff --git/ { skip=0 }
+        !skip { print }
+    ' > "$FILTERED_PATCH"
+    info "  Stripped Kconfig hunk (ReSukiSU already has KSU_SUSFS Kconfig)"
+
+    apply_patch "$FILTERED_PATCH" "$KSU_DRIVER_DIR" || true
+    rm -f "$FILTERED_PATCH"
+else
+    error "SuSFS KernelSU patch not found: $KSU_PATCH"
+    FAILED=$((FAILED + 1))
+fi
 
 # ════════════════════════════════════════
 # Phase 2: Apply kernel-level SuSFS patch
